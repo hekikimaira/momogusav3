@@ -26,7 +26,7 @@ textarea{resize:vertical}
 .tab-btn svg{display:block;margin:0 auto 3px;width:20px;height:20px}
 .tab-content{display:none;flex:1;overflow-y:auto;padding-bottom:20px}
 .tab-content.active{display:flex;flex-direction:column}
-.month-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.month-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:100px;z-index:52}
 .month-nav-label{font-size:15px;font-weight:600}
 .month-nav-btn{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--bg);font-size:16px;font-weight:700}
 .month-nav-btn:hover{background:var(--border)}
@@ -39,7 +39,7 @@ textarea{resize:vertical}
 .btn-danger{background:var(--danger);color:#fff}
 .btn-outline{border:1px solid var(--border);background:var(--bg2)}.btn-outline:hover{background:var(--bg)}
 .btn-sm{padding:5px 10px;font-size:12px}
-.techo-toolbar{display:flex;gap:4px;padding:8px 12px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:100px;z-index:50}
+.techo-toolbar{display:flex;gap:4px;padding:8px 12px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:142px;z-index:51}
 .techo-day{display:flex;align-items:stretch;border-bottom:1px solid var(--border);min-height:44px}
 .techo-date{width:52px;min-width:52px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:600;border-right:1px solid var(--border);background:var(--bg2)}
 .techo-date.today{background:var(--accent);color:#fff}
@@ -49,8 +49,6 @@ textarea{resize:vertical}
 .techo-entry{display:flex;align-items:center;gap:4px;min-height:28px}
 .techo-main{flex:1;padding:3px 6px;border:none;background:transparent;font-size:13px;border-bottom:1px solid transparent;outline:none;min-width:0}
 .techo-main:focus{border-bottom-color:var(--accent)}
-.techo-sub{width:80px;min-width:80px;padding:3px 6px;border:none;background:transparent;font-size:12px;color:var(--text2);border-bottom:1px solid transparent;border-left:1px solid var(--border);outline:none}
-.techo-sub:focus{border-bottom-color:var(--accent)}
 .techo-col-btns{display:flex;flex-direction:column;gap:1px;padding:2px}
 .techo-col-btn{width:22px;height:22px;font-size:14px;border-radius:4px;color:var(--text2);opacity:.4;display:flex;align-items:center;justify-content:center}
 .techo-col-btn:hover{opacity:1;background:var(--border)}
@@ -165,21 +163,21 @@ async function rT(){
     const dw=dow(y,m,d),it=ds===td,hl=ih(ds);
     let dc='techo-date';if(it)dc+=' today';else if(hl)dc+=' holiday';else if(dw===0)dc+=' sunday';else if(dw===6)dc+=' saturday';
     let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};
-    while(dy.entries.length<cols)dy.entries.push({uuid:uid(),main:'',sub:'',col:dy.entries.length});
+    while(dy.entries.length<cols)dy.entries.push({uuid:uid(),main:'',col:dy.entries.length});
     h+=`<div class="techo-day"><div class="${dc}"><span class="techo-date-num">${d}</span><span class="techo-date-day">${DW[dw]}</span></div><div class="techo-entries">`;
-    for(let c=0;c<dy.entries.length;c++){const e=dy.entries[c];h+=`<div class="techo-entry" data-date="${ds}" data-col="${c}" data-uuid="${e.uuid}"><input class="techo-main" value="${ea(e.main)}" placeholder="..." oninput="tSv(this,'main')"><input class="techo-sub" value="${ea(e.sub)}" placeholder="..." oninput="tSv(this,'sub')"></div>`}
+    for(let c=0;c<dy.entries.length;c++){const e=dy.entries[c];h+=`<div class="techo-entry" data-date="${ds}" data-col="${c}" data-uuid="${e.uuid}"><input class="techo-main" value="${ea(e.main)}" placeholder="..." oninput="tSv(this,'main')"></div>`}
     h+=`</div><div class="techo-col-btns"><button class="techo-col-btn" onclick="tAdd('${ds}')">＋</button>${dy.entries.length>cols?`<button class="techo-col-btn" onclick="tRm('${ds}')">−</button>`:''}</div></div>`;
   }
   document.getElementById('techo-body').innerHTML=h;
   if(tYM===cym()){const el=document.querySelector('.techo-date.today');if(el)el.closest('.techo-day').scrollIntoView({block:'center',behavior:'smooth'})}
 }
-function tSv(el,f){const en=el.closest('.techo-entry'),ds=en.dataset.date,col=+en.dataset.col,eu=en.dataset.uuid;let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};while(dy.entries.length<=col)dy.entries.push({uuid:uid(),main:'',sub:'',col:dy.entries.length});dy.entries[col][f]=el.value;dy.entries[col].uuid=eu;S.techoDays[ds]=dy;ss(['techoDays'])}
+function tSv(el,f){const en=el.closest('.techo-entry'),ds=en.dataset.date,col=+en.dataset.col,eu=en.dataset.uuid;let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};while(dy.entries.length<=col)dy.entries.push({uuid:uid(),main:'',col:dy.entries.length});dy.entries[col][f]=el.value;dy.entries[col].uuid=eu;S.techoDays[ds]=dy;ss(['techoDays'])}
 function techoAddCol(){S.techoColumns++;ss(['techoColumns']);rT()}
 function techoRmCol(){if(S.techoColumns<=1)return;cf('最後の列を削除しますか？データも消えます。',()=>{S.techoColumns--;for(const ds in S.techoDays){const d=S.techoDays[ds];if(d.entries.length>S.techoColumns)d.entries.length=S.techoColumns}ss(['techoColumns','techoDays']);rT()})}
-function tAdd(ds){let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};dy.entries.push({uuid:uid(),main:'',sub:'',col:dy.entries.length});S.techoDays[ds]=dy;ss(['techoDays']);rT()}
+function tAdd(ds){let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};dy.entries.push({uuid:uid(),main:'',col:dy.entries.length});S.techoDays[ds]=dy;ss(['techoDays']);rT()}
 function tRm(ds){cf('最後の項目を削除しますか？',()=>{let dy=S.techoDays[ds];if(!dy||dy.entries.length<=S.techoColumns)return;dy.entries.pop();S.techoDays[ds]=dy;ss(['techoDays']);rT()})}
 function openShiftInsert(){let h=`<div class="modal-header"><span class="modal-title">シフト挿入</span><button class="modal-close" onclick="csm()">×</button></div><div style="padding:8px"><label style="font-size:13px;font-weight:600">パターン</label><select id="sp" class="memo-select" style="margin:6px 0">`;S.shiftPatterns.forEach((p,i)=>{h+=`<option value="${i}">${p.name} (${p.items.length}項目)</option>`});h+=`</select><label style="font-size:13px;font-weight:600">開始日</label><input type="date" id="sd" class="text-input" style="margin:6px 0" value="${ts()}"><label style="font-size:13px;font-weight:600">繰り返し回数</label><input type="number" id="sr" class="text-input" style="margin:6px 0" value="1" min="1" max="100"><button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="doSI()">挿入</button></div>`;osm(h)}
-function doSI(){const pi=+document.getElementById('sp').value,sd=document.getElementById('sd').value,rep=+document.getElementById('sr').value||1,pat=S.shiftPatterns[pi];if(!pat||!pat.items.length){alert('パターンが空です');return}let cur=new Date(sd+'T00:00:00');for(let i=0;i<pat.items.length*rep;i++){const ds=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};if(!dy.entries.length)dy.entries.push({uuid:uid(),main:'',sub:'',col:0});dy.entries[0].main=pat.items[i%pat.items.length];S.techoDays[ds]=dy;cur.setDate(cur.getDate()+1)}ss(['techoDays']);csm();rT()}
+function doSI(){const pi=+document.getElementById('sp').value,sd=document.getElementById('sd').value,rep=+document.getElementById('sr').value||1,pat=S.shiftPatterns[pi];if(!pat||!pat.items.length){alert('パターンが空です');return}let cur=new Date(sd+'T00:00:00');for(let i=0;i<pat.items.length*rep;i++){const ds=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};if(!dy.entries.length)dy.entries.push({uuid:uid(),main:'',col:0});dy.entries[0].main=pat.items[i%pat.items.length];S.techoDays[ds]=dy;cur.setDate(cur.getDate()+1)}ss(['techoDays']);csm();rT()}
 
 // === MEMO ===
 let mC=null,mS=null;
