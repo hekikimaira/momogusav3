@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1a1a2e">
+<title>ものぐさ手帳</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* ========== CSS Variables / Theme ========== */
+:root {
+  --bg: #f5f5f0;
+  --bg2: #ffffff;
+  --text: #1a1a2e;
+  --text2: #555;
+  --accent: #2563eb;
+  --accent2: #1d4ed8;
+  --border: #d4d4d4;
+  --header-bg: #1a1a2e;
+  --header-text: #f5f5f0;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warn: #ca8a04;
+  --tab-active: #2563eb;
+  --tab-inactive: #888;
+  --input-bg: #fff;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --radius: 8px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+[data-theme="dark"] {
+  --bg: #0f0f1a;
+  --bg2: #1a1a2e;
+  --text: #e8e8e8;
+  --text2: #aaa;
+  --border: #333;
+  --header-bg: #0a0a14;
+  --input-bg: #1a1a2e;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ========== Reset ========== */
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;
+  -webkit-text-size-adjust:100%;
+  padding-top:var(--safe-top);
+  padding-bottom:var(--safe-bottom);
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea,select{font-family:inherit;font-size:16px;color:var(--text)}
+textarea{resize:vertical}
+
+/* ========== Header ========== */
+.header{
+  background:var(--header-bg);color:var(--header-text);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;min-height:44px;
+  position:sticky;top:0;z-index:100;
+}
+.header-title{font-size:15px;font-weight:600;letter-spacing:0.5px}
+.header-btn{
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;font-size:18px;
+  transition:background 0.15s;
+}
+.header-btn:hover{background:rgba(255,255,255,0.1)}
+.header-right{display:flex;gap:4px;align-items:center}
+
+/* ========== Tab Bar ========== */
+.tab-bar{
+  display:flex;background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:44px;z-index:99;
+}
+.tab-btn{
+  flex:1;padding:10px 0 8px;text-align:center;
+  font-size:12px;font-weight:600;
+  color:var(--tab-inactive);
+  border-bottom:2px solid transparent;
+  transition:all 0.2s;
+}
+.tab-btn.active{color:var(--tab-active);border-bottom-color:var(--tab-active)}
+.tab-btn svg{display:block;margin:0 auto 3px;width:20px;height:20px}
+
+/* ========== Tab Content ========== */
+.tab-content{display:none;flex:1;overflow-y:auto;padding-bottom:20px}
+.tab-content.active{display:flex;flex-direction:column}
+
+/* ========== Month Nav ========== */
+.month-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 12px;background:var(--bg2);
+  border-bottom:1px solid var(--border);
+}
+.month-nav-label{font-size:15px;font-weight:600}
+.month-nav-btn{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg);font-size:16px;font-weight:700;
+  transition:background 0.15s;
+}
+.month-nav-btn:hover{background:var(--border)}
+
+/* ========== Common Inputs ========== */
+.input-row{
+  display:flex;gap:6px;align-items:center;
+  padding:8px 12px;
+}
+.text-input{
+  flex:1;padding:8px 10px;border:1px solid var(--border);
+  border-radius:var(--radius);background:var(--input-bg);
+  font-size:14px;outline:none;
+  transition:border-color 0.15s;
+}
+.text-input:focus{border-color:var(--accent)}
+.text-area{
+  width:100%;padding:10px;border:1px solid var(--border);
+  border-radius:var(--radius);background:var(--input-bg);
+  font-size:14px;outline:none;min-height:120px;
+  line-height:1.6;
+  transition:border-color 0.15s;
+}
+.text-area:focus{border-color:var(--accent)}
+
+/* ========== Buttons ========== */
+.btn{
+  padding:6px 14px;border-radius:var(--radius);
+  font-size:13px;font-weight:600;
+  transition:all 0.15s;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-outline{border:1px solid var(--border);background:var(--bg2)}
+.btn-outline:hover{background:var(--bg)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-icon{
+  width:28px;height:28px;border-radius:6px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:14px;color:var(--text2);
+  transition:all 0.15s;
+}
+.btn-icon:hover{background:var(--border);color:var(--text)}
+.btn-icon.danger:hover{background:#fecaca;color:var(--danger)}
+
+/* ========== Card ========== */
+.card{
+  margin:8px 12px;padding:12px;
+  background:var(--bg2);border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+
+/* ========== Menu Modal ========== */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.4);z-index:200;
+  align-items:flex-end;justify-content:center;
+}
+.modal-overlay.open{display:flex}
+.modal-sheet{
+  background:var(--bg2);border-radius:16px 16px 0 0;
+  width:100%;max-width:600px;
+  max-height:85vh;overflow-y:auto;
+  padding:16px 16px calc(16px + var(--safe-bottom));
+  animation:slideUp 0.25s ease;
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-bottom:12px;border-bottom:1px solid var(--border);
+  margin-bottom:12px;
+}
+.modal-title{font-size:16px;font-weight:700}
+.modal-close{font-size:24px;width:32px;height:32px;display:flex;align-items:center;justify-content:center}
+.menu-item{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 8px;border-bottom:1px solid var(--border);
+  font-size:14px;width:100%;text-align:left;
+  transition:background 0.15s;
+}
+.menu-item:hover{background:var(--bg)}
+.menu-item:last-child{border-bottom:none}
+.menu-icon{font-size:18px;width:28px;text-align:center}
+
+/* ========== Techo ========== */
+.techo-day{
+  display:flex;align-items:stretch;
+  border-bottom:1px solid var(--border);
+  min-height:44px;
+}
+.techo-date{
+  width:52px;min-width:52px;padding:6px 4px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:12px;font-weight:600;
+  border-right:1px solid var(--border);
+  background:var(--bg2);
+}
+.techo-date.today{background:var(--accent);color:#fff;border-radius:0}
+.techo-date.sunday{color:var(--danger)}
+.techo-date.saturday{color:var(--accent)}
+.techo-date.holiday{color:var(--danger)}
+.techo-date-num{font-size:16px;line-height:1}
+.techo-date-day{font-size:10px;margin-top:2px}
+.techo-entries{
+  flex:1;display:flex;flex-direction:column;
+  padding:4px 6px;gap:2px;
+  position:relative;
+}
+.techo-entry{
+  display:flex;align-items:center;gap:4px;
+  min-height:28px;
+}
+.techo-main{
+  flex:1;padding:3px 6px;border:none;
+  background:transparent;font-size:13px;
+  border-bottom:1px solid transparent;
+  outline:none;min-width:0;
+  word-wrap:break-word;overflow-wrap:break-word;
+}
+.techo-main:focus{border-bottom-color:var(--accent)}
+.techo-sub{
+  width:80px;min-width:80px;padding:3px 6px;border:none;
+  background:transparent;font-size:12px;color:var(--text2);
+  border-bottom:1px solid transparent;
+  border-left:1px solid var(--border);
+  outline:none;
+}
+.techo-sub:focus{border-bottom-color:var(--accent)}
+.techo-col-btns{
+  display:flex;flex-direction:column;gap:1px;
+  padding:2px;
+}
+.techo-col-btn{
+  width:22px;height:22px;font-size:14px;
+  border-radius:4px;color:var(--text2);
+  opacity:0.4;transition:opacity 0.15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.techo-col-btn:hover{opacity:1;background:var(--border)}
+.techo-entry-actions{
+  display:none;position:absolute;right:0;top:0;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:4px;
+  box-shadow:var(--shadow);z-index:10;
+  gap:2px;
+}
+.techo-entry:focus-within .techo-entry-actions,
+.techo-entry-actions.show{
+  display:flex;
+}
+
+/* ========== Kakeibo ========== */
+.kakeibo-summary{
+  display:flex;gap:8px;padding:12px;
+  flex-wrap:wrap;
+}
+.kakeibo-stat{
+  flex:1;min-width:80px;padding:10px;
+  background:var(--bg);border-radius:var(--radius);
+  text-align:center;
+}
+.kakeibo-stat-label{font-size:11px;color:var(--text2);margin-bottom:4px}
+.kakeibo-stat-value{font-size:18px;font-weight:700}
+.kakeibo-stat-value.positive{color:var(--success)}
+.kakeibo-stat-value.negative{color:var(--danger)}
+.kakeibo-section{padding:8px 12px}
+.kakeibo-section-title{
+  font-size:13px;font-weight:700;color:var(--text2);
+  margin-bottom:6px;display:flex;align-items:center;gap:6px;
+}
+.kakeibo-section-total{
+  font-size:12px;font-weight:600;
+  margin-left:auto;
+}
+
+/* ========== Memo ========== */
+.memo-selector{
+  display:flex;gap:6px;padding:10px 12px;
+  align-items:center;flex-wrap:wrap;
+}
+.memo-select{
+  flex:1;min-width:100px;padding:8px;
+  border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--input-bg);font-size:14px;
+  outline:none;
+}
+.memo-select:focus{border-color:var(--accent)}
+.memo-editor{padding:8px 12px;flex:1;display:flex;flex-direction:column}
+.memo-editor textarea{flex:1;min-height:300px}
+.memo-toolbar{
+  display:flex;gap:4px;padding:6px 0;flex-wrap:wrap;
+  align-items:center;
+}
+.memo-line-count{font-size:11px;color:var(--text2);margin-left:auto}
+
+/* ========== Year View (kakeibo) ========== */
+.year-table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+.year-table th,.year-table td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--border)}
+.year-table th{text-align:left;font-weight:600;color:var(--text2);font-size:12px}
+.year-table td:first-child{text-align:left;font-weight:600}
+.year-table .total-row{font-weight:700;border-top:2px solid var(--text)}
+
+/* ========== Confirm Dialog ========== */
+.confirm-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.5);z-index:300;
+  align-items:center;justify-content:center;
+}
+.confirm-overlay.open{display:flex}
+.confirm-box{
+  background:var(--bg2);border-radius:12px;
+  padding:20px;margin:20px;max-width:300px;
+  text-align:center;
+}
+.confirm-msg{font-size:14px;margin-bottom:16px;line-height:1.5}
+.confirm-btns{display:flex;gap:8px;justify-content:center}
+
+/* ========== Responsive ========== */
+@media(min-width:768px){
+  body{max-width:600px;margin:0 auto;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+  .techo-main{font-size:14px}
+  .techo-sub{width:120px;min-width:120px}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-title">ものぐさ手帳</div>
+  <div class="header-right">
+    <button class="header-btn" onclick="openMenu()" title="メニュー">☰</button>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="techo" onclick="switchTab('techo')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    手帳
+  </button>
+  <button class="tab-btn" data-tab="memo" onclick="switchTab('memo')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    メモ
+  </button>
+  <button class="tab-btn" data-tab="kakeibo" onclick="switchTab('kakeibo')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    家計簿
+  </button>
+</div>
+
+<!-- Techo Tab -->
+<div class="tab-content active" id="tab-techo">
+  <div class="month-nav">
+    <button class="month-nav-btn" onclick="techoMonth(-1)">◀</button>
+    <span class="month-nav-label" id="techo-month-label"></span>
+    <button class="month-nav-btn" onclick="techoMonth(1)">▶</button>
+  </div>
+  <div id="techo-toolbar" style="display:flex;gap:4px;padding:8px 12px;flex-wrap:wrap;align-items:center">
+    <button class="btn btn-outline btn-sm" onclick="techoAddColumn()">＋列</button>
+    <button class="btn btn-outline btn-sm" id="techo-remove-col-btn" style="display:none" onclick="techoRemoveColumn()">−列</button>
+    <button class="btn btn-primary btn-sm" onclick="openShiftInsert()">シフト挿入</button>
+  </div>
+  <div id="techo-body"></div>
+</div>
+
+<!-- Memo Tab -->
+<div class="tab-content" id="tab-memo">
+  <div class="month-nav">
+    <button class="month-nav-btn" onclick="memoNavPrev()">◀</button>
+    <span class="month-nav-label" id="memo-month-label">メモ</span>
+    <button class="month-nav-btn" onclick="memoNavNext()">▶</button>
+  </div>
+  <div class="memo-selector">
+    <select class="memo-select" id="memo-cat-select" onchange="memoSelectCat()">
+      <option value="">-- 大カテゴリ --</option>
+    </select>
+    <select class="memo-select" id="memo-sub-select" onchange="memoSelectSub()">
+      <option value="">-- 小カテゴリ --</option>
+    </select>
+  </div>
+  <div class="memo-toolbar" style="padding:0 12px">
+    <button class="btn btn-outline btn-sm" onclick="memoAddCat()">＋大</button>
+    <button class="btn btn-outline btn-sm" onclick="memoAddSub()">＋小</button>
+    <button class="btn btn-outline btn-sm" onclick="memoDeleteCat()">削除大</button>
+    <button class="btn btn-outline btn-sm" onclick="memoDeleteSub()">削除小</button>
+    <button class="btn btn-outline btn-sm" onclick="memoSearch()">検索</button>
+    <button class="btn btn-outline btn-sm" onclick="memoReplace()">置換</button>
+    <span class="memo-line-count" id="memo-line-count"></span>
+  </div>
+  <div class="memo-editor">
+    <textarea class="text-area" id="memo-textarea" placeholder="ここに入力..." oninput="memoInput()"></textarea>
+  </div>
+</div>
+
+<!-- Kakeibo Tab -->
+<div class="tab-content" id="tab-kakeibo">
+  <div class="month-nav">
+    <button class="month-nav-btn" onclick="kakeiboNav(-1)">◀</button>
+    <span class="month-nav-label" id="kakeibo-month-label"></span>
+    <button class="month-nav-btn" onclick="kakeiboNav(1)">▶</button>
+  </div>
+  <div style="padding:8px 12px;display:flex;gap:4px">
+    <button class="btn btn-outline btn-sm" id="kakeibo-mode-month" onclick="kakeiboSetMode('month')" style="font-weight:700">月単位</button>
+    <button class="btn btn-outline btn-sm" id="kakeibo-mode-year" onclick="kakeiboSetMode('year')">年単位</button>
+  </div>
+  <div id="kakeibo-month-view">
+    <div class="kakeibo-summary" id="kakeibo-summary"></div>
+    <div class="kakeibo-section">
+      <div class="kakeibo-section-title">収入 <span class="kakeibo-section-total" id="kakeibo-income-total">¥0</span></div>
+      <textarea class="text-area" id="kakeibo-income" placeholder="半角数字で金額、全角でコメント&#10;例: 250000 給与" oninput="kakeiboCalc()"></textarea>
+    </div>
+    <div class="kakeibo-section">
+      <div class="kakeibo-section-title">支出 <span class="kakeibo-section-total" id="kakeibo-expense-total">¥0</span></div>
+      <textarea class="text-area" id="kakeibo-expense" placeholder="半角数字で金額、全角でコメント&#10;例: 80000 家賃" oninput="kakeiboCalc()"></textarea>
+    </div>
+  </div>
+  <div id="kakeibo-year-view" style="display:none;padding:8px 12px"></div>
+</div>
+
+<!-- Menu Modal -->
+<div class="modal-overlay" id="menu-modal">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <span class="modal-title">メニュー</span>
+      <button class="modal-close" onclick="closeMenu()">×</button>
+    </div>
+    <button class="menu-item" onclick="menuExport()"><span class="menu-icon">📤</span>ZIPエクスポート</button>
+    <button class="menu-item" onclick="menuImport()"><span class="menu-icon">📥</span>ZIPインポート</button>
+    <button class="menu-item" onclick="menuDateCorrection()"><span class="menu-icon">🕐</span>日付修正</button>
+    <button class="menu-item" onclick="menuTheme()"><span class="menu-icon">🎨</span>テーマ変更</button>
+    <button class="menu-item" onclick="menuShiftEdit()"><span class="menu-icon">📋</span>シフトパターン編集</button>
+    <button class="menu-item" onclick="menuTemplateEdit()"><span class="menu-icon">📝</span>テンプレート編集</button>
+    <button class="menu-item" onclick="menuFirebase()"><span class="menu-icon">☁️</span>Firebase同期設定</button>
+    <button class="menu-item" onclick="menuImportMode()"><span class="menu-icon">⚙️</span>インポートモード</button>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="confirm-overlay" id="confirm-dialog">
+  <div class="confirm-box">
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-btns">
+      <button class="btn btn-outline" onclick="confirmCancel()">キャンセル</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmOk()">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sub-modal (for shift edit, template edit, etc.) -->
+<div class="modal-overlay" id="sub-modal">
+  <div class="modal-sheet" id="sub-modal-content"></div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="file-input" accept=".zip" style="display:none" onchange="handleFileImport(event)">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// ================================================================
+// DATA LAYER
+// ================================================================
+const DB_PREFIX = 'monogusa_';
+const save = (k, v) => { try { localStorage.setItem(DB_PREFIX + k, JSON.stringify(v)); } catch(e) { console.error('save error', e); } };
+const load = (k, def) => { try { const v = localStorage.getItem(DB_PREFIX + k); return v ? JSON.parse(v) : def; } catch(e) { return def; } };
+const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); });
+
+// State
+let state = {
+  techoDays: load('techoDays', {}),      // { "yyyy-MM-dd": { uuid, date, entries: [{uuid, main, sub, col}] } }
+  shiftPatterns: load('shiftPatterns', [
+    {uuid:uuid(),name:'A',items:[]},{uuid:uuid(),name:'B',items:[]},
+    {uuid:uuid(),name:'C',items:[]},{uuid:uuid(),name:'D',items:[]}
+  ]),
+  templates: load('templates', []),        // [{uuid, name, main, sub}]
+  techoColumns: load('techoColumns', 1),
+  memoCategories: load('memoCategories', []), // [{uuid, name, subs:[{uuid, name, content, sortOrder}], sortOrder}]
+  kakeiboMonths: load('kakeiboMonths', {}),   // { "yyyy-MM": {uuid, yearMonth, income, expense} }
+  settings: load('settings', { dateCorrection: 0, theme: 'system', importMode: 'overwrite', firebaseConfig: null }),
+};
+
+function saveState(keys) {
+  if (!keys) keys = Object.keys(state);
+  for (const k of keys) save(k, state[k]);
+}
+
+// Date utils
+function correctedNow() { return new Date(Date.now() + (state.settings.dateCorrection || 0)); }
+function todayStr() { const d = correctedNow(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function currentYM() { const d = correctedNow(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function ymToDate(ym) { const [y,m] = ym.split('-').map(Number); return new Date(y, m-1, 1); }
+function addMonth(ym, n) { const d = ymToDate(ym); d.setMonth(d.getMonth()+n); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function daysInMonth(ym) { const [y,m] = ym.split('-').map(Number); return new Date(y, m, 0).getDate(); }
+function dayOfWeek(y,m,d) { return new Date(y,m-1,d).getDay(); }
+const DOW = ['日','月','火','水','木','金','土'];
+
+// 祝日（簡易）
+const HOLIDAYS = {};
+async function loadHolidays(year) {
+  if (HOLIDAYS[year]) return;
+  try {
+    const res = await fetch(`https://holidays-jp.github.io/api/v1/${year}/date.json`);
+    if (res.ok) HOLIDAYS[year] = await res.json();
+  } catch(e) { HOLIDAYS[year] = {}; }
+}
+function isHoliday(dateStr) {
+  const year = dateStr.split('-')[0];
+  return HOLIDAYS[year] && HOLIDAYS[year][dateStr];
+}
+
+// ================================================================
+// TABS
+// ================================================================
+let currentTab = 'techo';
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+  if (tab === 'techo') renderTecho();
+  else if (tab === 'memo') renderMemo();
+  else if (tab === 'kakeibo') renderKakeibo();
+}
+
+// ================================================================
+// MENU
+// ================================================================
+function openMenu() { document.getElementById('menu-modal').classList.add('open'); }
+function closeMenu() { document.getElementById('menu-modal').classList.remove('open'); }
+
+function openSubModal(html) {
+  document.getElementById('sub-modal-content').innerHTML = html;
+  document.getElementById('sub-modal').classList.add('open');
+}
+function closeSubModal() { document.getElementById('sub-modal').classList.remove('open'); }
+
+// Confirm
+let confirmCallback = null;
+function showConfirm(msg, cb) {
+  document.getElementById('confirm-msg').textContent = msg;
+  confirmCallback = cb;
+  document.getElementById('confirm-dialog').classList.add('open');
+}
+function confirmOk() {
+  document.getElementById('confirm-dialog').classList.remove('open');
+  if (confirmCallback) confirmCallback();
+  confirmCallback = null;
+}
+function confirmCancel() {
+  document.getElementById('confirm-dialog').classList.remove('open');
+  confirmCallback = null;
+}
+
+// ================================================================
+// TECHO
+// ================================================================
+let techoYM = currentYM();
+
+function techoMonth(n) {
+  techoYM = addMonth(techoYM, n);
+  renderTecho();
+}
+
+async function renderTecho() {
+  const [y, m] = techoYM.split('-').map(Number);
+  await loadHolidays(y);
+  document.getElementById('techo-month-label').textContent = `${y}年${m}月`;
+  
+  const cols = state.techoColumns;
+  document.getElementById('techo-remove-col-btn').style.display = cols > 1 ? '' : 'none';
+  
+  const days = daysInMonth(techoYM);
+  const todayS = todayStr();
+  let html = '';
+  
+  for (let d = 1; d <= days; d++) {
+    const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow = dayOfWeek(y, m, d);
+    const isToday = dateStr === todayS;
+    const holiday = isHoliday(dateStr);
+    
+    let dateClass = 'techo-date';
+    if (isToday) dateClass += ' today';
+    else if (holiday) dateClass += ' holiday';
+    else if (dow === 0) dateClass += ' sunday';
+    else if (dow === 6) dateClass += ' saturday';
+    
+    // entries取得
+    let dayData = state.techoDays[dateStr];
+    if (!dayData) {
+      dayData = { uuid: uuid(), date: dateStr, entries: [] };
+    }
+    
+    // 列数分のエントリ確保
+    while (dayData.entries.length < cols) {
+      dayData.entries.push({ uuid: uuid(), main: '', sub: '', col: dayData.entries.length });
+    }
+    
+    html += `<div class="techo-day">
+      <div class="${dateClass}">
+        <span class="techo-date-num">${d}</span>
+        <span class="techo-date-day">${DOW[dow]}</span>
+      </div>
+      <div class="techo-entries">`;
+    
+    for (let c = 0; c < cols; c++) {
+      const entry = dayData.entries[c] || { uuid: uuid(), main: '', sub: '', col: c };
+      const mainVal = escAttr(entry.main);
+      const subVal = escAttr(entry.sub);
+      html += `<div class="techo-entry" data-date="${dateStr}" data-col="${c}" data-uuid="${entry.uuid}">
+        <input class="techo-main" value="${mainVal}" placeholder="..." 
+          onfocus="techoShowActions(this)" onblur="techoHideActions(this)" 
+          oninput="techoSave(this,'main')" style="word-wrap:break-word">
+        <input class="techo-sub" value="${subVal}" placeholder="..." 
+          oninput="techoSave(this,'sub')">
+        <div class="techo-entry-actions" id="actions-${dateStr}-${c}">
+          <button class="btn-icon" onclick="techoCopyEntry('${dateStr}',${c})" title="コピー">📋</button>
+          <button class="btn-icon" onclick="techoInsertDate('${dateStr}',${c},'year')" title="年挿入">📅</button>
+          <button class="btn-icon" onclick="techoInsertDate('${dateStr}',${c},'md')" title="月日挿入">🗓</button>
+          <button class="btn-icon" onclick="techoApplyTemplate('${dateStr}',${c})" title="テンプレ">📝</button>
+          <button class="btn-icon danger" onclick="techoDeleteEntry('${dateStr}',${c})" title="削除">🗑</button>
+        </div>
+      </div>`;
+    }
+    
+    html += `</div>
+      <div class="techo-col-btns">
+        <button class="techo-col-btn" onclick="techoAddEntry('${dateStr}')" title="項目追加">＋</button>
+        ${dayData.entries.length > cols ? `<button class="techo-col-btn" onclick="techoRemoveEntry('${dateStr}')" title="項目削除">−</button>` : ''}
+      </div>
+    </div>`;
+  }
+  
+  document.getElementById('techo-body').innerHTML = html;
+  
+  // 今日にスクロール
+  if (techoYM === currentYM()) {
+    const todayEl = document.querySelector('.techo-date.today');
+    if (todayEl) todayEl.closest('.techo-day').scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+}
+
+function techoSave(el, field) {
+  const entry = el.closest('.techo-entry');
+  const dateStr = entry.dataset.date;
+  const col = parseInt(entry.dataset.col);
+  const entryUuid = entry.dataset.uuid;
+  
+  let dayData = state.techoDays[dateStr];
+  if (!dayData) dayData = { uuid: uuid(), date: dateStr, entries: [] };
+  
+  while (dayData.entries.length <= col) {
+    dayData.entries.push({ uuid: uuid(), main: '', sub: '', col: dayData.entries.length });
+  }
+  
+  dayData.entries[col][field] = el.value;
+  dayData.entries[col].uuid = entryUuid;
+  state.techoDays[dateStr] = dayData;
+  saveState(['techoDays']);
+}
+
+function techoShowActions(el) {
+  const entry = el.closest('.techo-entry');
+  const actions = entry.querySelector('.techo-entry-actions');
+  if (actions) actions.classList.add('show');
+}
+function techoHideActions(el) {
+  setTimeout(() => {
+    const entry = el.closest('.techo-entry');
+    if (!entry) return;
+    const actions = entry.querySelector('.techo-entry-actions');
+    if (actions && !entry.matches(':focus-within')) actions.classList.remove('show');
+  }, 200);
+}
+
+function techoAddColumn() {
+  state.techoColumns++;
+  saveState(['techoColumns']);
+  renderTecho();
+}
+function techoRemoveColumn() {
+  if (state.techoColumns <= 1) return;
+  showConfirm('最後の列を削除しますか？データも消えます。', () => {
+    state.techoColumns--;
+    // 各日の最後の列データ削除
+    for (const dateStr in state.techoDays) {
+      const day = state.techoDays[dateStr];
+      if (day.entries.length > state.techoColumns) {
+        day.entries.length = state.techoColumns;
+      }
+    }
+    saveState(['techoColumns', 'techoDays']);
+    renderTecho();
+  });
+}
+
+function techoAddEntry(dateStr) {
+  let day = state.techoDays[dateStr];
+  if (!day) day = { uuid: uuid(), date: dateStr, entries: [] };
+  day.entries.push({ uuid: uuid(), main: '', sub: '', col: day.entries.length });
+  state.techoDays[dateStr] = day;
+  saveState(['techoDays']);
+  renderTecho();
+}
+
+function techoRemoveEntry(dateStr) {
+  showConfirm('最後の項目を削除しますか？', () => {
+    let day = state.techoDays[dateStr];
+    if (!day || day.entries.length <= state.techoColumns) return;
+    day.entries.pop();
+    state.techoDays[dateStr] = day;
+    saveState(['techoDays']);
+    renderTecho();
+  });
+}
+
+function techoCopyEntry(dateStr, col) {
+  const day = state.techoDays[dateStr];
+  if (!day || !day.entries[col]) return;
+  const e = day.entries[col];
+  const text = e.sub ? `${e.main}\t${e.sub}` : e.main;
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function techoInsertDate(dateStr, col, mode) {
+  const [y, m, d] = dateStr.split('-');
+  let text;
+  if (mode === 'year') text = `${y}年${parseInt(m)}月${parseInt(d)}日`;
+  else text = `${parseInt(m)}月${parseInt(d)}日`;
+  
+  let day = state.techoDays[dateStr];
+  if (!day) day = { uuid: uuid(), date: dateStr, entries: [] };
+  while (day.entries.length <= col) day.entries.push({ uuid: uuid(), main: '', sub: '', col: day.entries.length });
+  day.entries[col].main = text;
+  state.techoDays[dateStr] = day;
+  saveState(['techoDays']);
+  renderTecho();
+}
+
+function techoApplyTemplate(dateStr, col) {
+  if (state.templates.length === 0) { alert('テンプレートがありません。メニューから追加してください。'); return; }
+  let html = `<div class="modal-header"><span class="modal-title">テンプレート選択</span><button class="modal-close" onclick="closeSubModal()">×</button></div>`;
+  for (const t of state.templates) {
+    html += `<button class="menu-item" onclick="techoApplyTpl('${dateStr}',${col},'${t.uuid}')">${esc(t.name)} (${esc(t.main)})</button>`;
+  }
+  openSubModal(html);
+}
+
+function techoApplyTpl(dateStr, col, tplUuid) {
+  const tpl = state.templates.find(t => t.uuid === tplUuid);
+  if (!tpl) return;
+  let day = state.techoDays[dateStr];
+  if (!day) day = { uuid: uuid(), date: dateStr, entries: [] };
+  while (day.entries.length <= col) day.entries.push({ uuid: uuid(), main: '', sub: '', col: day.entries.length });
+  day.entries[col].main = tpl.main;
+  day.entries[col].sub = tpl.sub;
+  state.techoDays[dateStr] = day;
+  saveState(['techoDays']);
+  closeSubModal();
+  renderTecho();
+}
+
+function techoDeleteEntry(dateStr, col) {
+  showConfirm('この項目を削除しますか？', () => {
+    let day = state.techoDays[dateStr];
+    if (!day) return;
+    day.entries[col] = { uuid: uuid(), main: '', sub: '', col: col };
+    state.techoDays[dateStr] = day;
+    saveState(['techoDays']);
+    renderTecho();
+  });
+}
+
+// ================================================================
+// SHIFT INSERT
+// ================================================================
+function openShiftInsert() {
+  let html = `<div class="modal-header"><span class="modal-title">シフト挿入</span><button class="modal-close" onclick="closeSubModal()">×</button></div>
+  <div style="padding:8px">
+    <label style="font-size:13px;font-weight:600">パターン</label>
+    <select id="shift-pattern-select" class="memo-select" style="margin:6px 0">`;
+  state.shiftPatterns.forEach((p, i) => {
+    const itemCount = p.items.length;
+    html += `<option value="${i}">${p.name} (${itemCount}項目)</option>`;
+  });
+  html += `</select>
+    <label style="font-size:13px;font-weight:600">開始日</label>
+    <input type="date" id="shift-start-date" class="text-input" style="margin:6px 0" value="${todayStr()}">
+    <label style="font-size:13px;font-weight:600">繰り返し回数</label>
+    <input type="number" id="shift-repeat" class="text-input" style="margin:6px 0" value="1" min="1" max="100">
+    <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="doShiftInsert()">挿入</button>
+  </div>`;
+  openSubModal(html);
+}
+
+function doShiftInsert() {
+  const patIdx = parseInt(document.getElementById('shift-pattern-select').value);
+  const startDate = document.getElementById('shift-start-date').value;
+  const repeat = parseInt(document.getElementById('shift-repeat').value) || 1;
+  const pat = state.shiftPatterns[patIdx];
+  if (!pat || pat.items.length === 0) { alert('パターンが空です'); return; }
+  
+  const formatter = s => { const [y,m,d]=s.split('-'); return new Date(y,m-1,d); };
+  let current = formatter(startDate);
+  let idx = 0;
+  const total = pat.items.count * repeat;
+  
+  for (let i = 0; i < pat.items.length * repeat; i++) {
+    const y = current.getFullYear();
+    const m = String(current.getMonth()+1).padStart(2,'0');
+    const d = String(current.getDate()).padStart(2,'0');
+    const dateStr = `${y}-${m}-${d}`;
+    
+    let day = state.techoDays[dateStr];
+    if (!day) day = { uuid: uuid(), date: dateStr, entries: [] };
+    if (day.entries.length === 0) day.entries.push({ uuid: uuid(), main: '', sub: '', col: 0 });
+    day.entries[0].main = pat.items[i % pat.items.length];
+    state.techoDays[dateStr] = day;
+    
+    current.setDate(current.getDate() + 1);
+  }
+  
+  saveState(['techoDays']);
+  closeSubModal();
+  renderTecho();
+}
+
+// ================================================================
+// MEMO
+// ================================================================
+let memoCurrentCat = null;
+let memoCurrentSub = null;
+
+function renderMemo() {
+  const catSelect = document.getElementById('memo-cat-select');
+  const subSelect = document.getElementById('memo-sub-select');
+  
+  let catHtml = '<option value="">-- 大カテゴリ --</option>';
+  const sorted = [...state.memoCategories].sort((a,b) => a.sortOrder - b.sortOrder);
+  for (const cat of sorted) {
+    const sel = memoCurrentCat === cat.uuid ? ' selected' : '';
+    catHtml += `<option value="${cat.uuid}"${sel}>${esc(cat.name)}</option>`;
+  }
+  catSelect.innerHTML = catHtml;
+  
+  memoSelectCat();
+}
+
+function memoSelectCat() {
+  const catUuid = document.getElementById('memo-cat-select').value;
+  memoCurrentCat = catUuid || null;
+  const subSelect = document.getElementById('memo-sub-select');
+  
+  let subHtml = '<option value="">-- 小カテゴリ --</option>';
+  if (catUuid) {
+    const cat = state.memoCategories.find(c => c.uuid === catUuid);
+    if (cat) {
+      const sorted = [...cat.subs].sort((a,b) => a.sortOrder - b.sortOrder);
+      for (const sub of sorted) {
+        const sel = memoCurrentSub === sub.uuid ? ' selected' : '';
+        subHtml += `<option value="${sub.uuid}"${sel}>${esc(sub.name)}</option>`;
+      }
+    }
+  }
+  subSelect.innerHTML = subHtml;
+  memoSelectSub();
+}
+
+function memoSelectSub() {
+  const subUuid = document.getElementById('memo-sub-select').value;
+  memoCurrentSub = subUuid || null;
+  const textarea = document.getElementById('memo-textarea');
+  
+  if (memoCurrentCat && memoCurrentSub) {
+    const cat = state.memoCategories.find(c => c.uuid === memoCurrentCat);
+    const sub = cat?.subs?.find(s => s.uuid === memoCurrentSub);
+    textarea.value = sub?.content || '';
+    textarea.disabled = false;
+  } else {
+    textarea.value = '';
+    textarea.disabled = true;
+  }
+  memoUpdateCount();
+}
+
+function memoInput() {
+  if (!memoCurrentCat || !memoCurrentSub) return;
+  const content = document.getElementById('memo-textarea').value;
+  const catIdx = state.memoCategories.findIndex(c => c.uuid === memoCurrentCat);
+  if (catIdx < 0) return;
+  const subIdx = state.memoCategories[catIdx].subs.findIndex(s => s.uuid === memoCurrentSub);
+  if (subIdx < 0) return;
+  state.memoCategories[catIdx].subs[subIdx].content = content;
+  state.memoCategories[catIdx].subs[subIdx].updatedAt = new Date().toISOString();
+  saveState(['memoCategories']);
+  memoUpdateCount();
+}
+
+function memoUpdateCount() {
+  const textarea = document.getElementById('memo-textarea');
+  const lines = textarea.value.split('\n').length;
+  const chars = textarea.value.length;
+  document.getElementById('memo-line-count').textContent = `${lines}行 / ${chars}字`;
+}
+
+function memoAddCat() {
+  const name = prompt('大カテゴリ名:');
+  if (!name) return;
+  state.memoCategories.push({ uuid: uuid(), name, subs: [], sortOrder: state.memoCategories.length });
+  saveState(['memoCategories']);
+  memoCurrentCat = state.memoCategories[state.memoCategories.length - 1].uuid;
+  renderMemo();
+}
+
+function memoAddSub() {
+  if (!memoCurrentCat) { alert('大カテゴリを選択してください'); return; }
+  const name = prompt('小カテゴリ名:');
+  if (!name) return;
+  const catIdx = state.memoCategories.findIndex(c => c.uuid === memoCurrentCat);
+  if (catIdx < 0) return;
+  const sub = { uuid: uuid(), name, content: '', sortOrder: state.memoCategories[catIdx].subs.length, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  state.memoCategories[catIdx].subs.push(sub);
+  saveState(['memoCategories']);
+  memoCurrentSub = sub.uuid;
+  renderMemo();
+}
+
+function memoDeleteCat() {
+  if (!memoCurrentCat) return;
+  const cat = state.memoCategories.find(c => c.uuid === memoCurrentCat);
+  showConfirm(`「${cat?.name}」を削除しますか？中の小カテゴリも全て消えます。`, () => {
+    state.memoCategories = state.memoCategories.filter(c => c.uuid !== memoCurrentCat);
+    memoCurrentCat = null; memoCurrentSub = null;
+    saveState(['memoCategories']);
+    renderMemo();
+  });
+}
+
+function memoDeleteSub() {
+  if (!memoCurrentCat || !memoCurrentSub) return;
+  const catIdx = state.memoCategories.findIndex(c => c.uuid === memoCurrentCat);
+  if (catIdx < 0) return;
+  const sub = state.memoCategories[catIdx].subs.find(s => s.uuid === memoCurrentSub);
+  showConfirm(`「${sub?.name}」を削除しますか？`, () => {
+    state.memoCategories[catIdx].subs = state.memoCategories[catIdx].subs.filter(s => s.uuid !== memoCurrentSub);
+    memoCurrentSub = null;
+    saveState(['memoCategories']);
+    renderMemo();
+  });
+}
+
+function memoSearch() {
+  const query = prompt('検索:');
+  if (!query) return;
+  const textarea = document.getElementById('memo-textarea');
+  const idx = textarea.value.indexOf(query);
+  if (idx >= 0) {
+    textarea.focus();
+    textarea.setSelectionRange(idx, idx + query.length);
+  } else {
+    alert('見つかりませんでした');
+  }
+}
+
+function memoReplace() {
+  const search = prompt('検索:');
+  if (!search) return;
+  const replace = prompt('置換:');
+  if (replace === null) return;
+  const textarea = document.getElementById('memo-textarea');
+  textarea.value = textarea.value.replaceAll(search, replace);
+  memoInput();
+}
+
+function memoNavPrev() {
+  // 前の月のサブカテゴリがなければ作成
+  if (memoCurrentCat) {
+    const cat = state.memoCategories.find(c => c.uuid === memoCurrentCat);
+    if (cat) {
+      const d = correctedNow();
+      d.setMonth(d.getMonth() - 1);
+      const monthName = `${d.getFullYear()}年${d.getMonth()+1}月`;
+      if (!cat.subs.find(s => s.name === monthName)) {
+        cat.subs.push({ uuid: uuid(), name: monthName, content: '', sortOrder: cat.subs.length, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+        saveState(['memoCategories']);
+      }
+      const sub = cat.subs.find(s => s.name === monthName);
+      if (sub) memoCurrentSub = sub.uuid;
+      renderMemo();
+    }
+  }
+}
+
+function memoNavNext() {
+  if (memoCurrentCat) {
+    const cat = state.memoCategories.find(c => c.uuid === memoCurrentCat);
+    if (cat) {
+      const d = correctedNow();
+      d.setMonth(d.getMonth() + 1);
+      const monthName = `${d.getFullYear()}年${d.getMonth()+1}月`;
+      if (!cat.subs.find(s => s.name === monthName)) {
+        cat.subs.push({ uuid: uuid(), name: monthName, content: '', sortOrder: cat.subs.length, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+        saveState(['memoCategories']);
+      }
+      const sub = cat.subs.find(s => s.name === monthName);
+      if (sub) memoCurrentSub = sub.uuid;
+      renderMemo();
+    }
+  }
+}
+
+// ================================================================
+// KAKEIBO
+// ================================================================
+let kakeiboYM = currentYM();
+let kakeiboMode = 'month';
+
+function kakeiboNav(n) {
+  kakeiboYM = addMonth(kakeiboYM, n);
+  renderKakeibo();
+}
+
+function kakeiboSetMode(mode) {
+  kakeiboMode = mode;
+  document.getElementById('kakeibo-mode-month').style.fontWeight = mode === 'month' ? '700' : '400';
+  document.getElementById('kakeibo-mode-year').style.fontWeight = mode === 'year' ? '700' : '400';
+  document.getElementById('kakeibo-month-view').style.display = mode === 'month' ? '' : 'none';
+  document.getElementById('kakeibo-year-view').style.display = mode === 'year' ? '' : 'none';
+  renderKakeibo();
+}
+
+function renderKakeibo() {
+  const [y, m] = kakeiboYM.split('-').map(Number);
+  document.getElementById('kakeibo-month-label').textContent = kakeiboMode === 'month' ? `${y}年${m}月` : `${y}年`;
+  
+  if (kakeiboMode === 'month') renderKakeiboMonth();
+  else renderKakeiboYear();
+}
+
+function renderKakeiboMonth() {
+  let data = state.kakeiboMonths[kakeiboYM];
+  if (!data) {
+    data = { uuid: uuid(), yearMonth: kakeiboYM, income: '', expense: '' };
+    state.kakeiboMonths[kakeiboYM] = data;
+    saveState(['kakeiboMonths']);
+  }
+  
+  document.getElementById('kakeibo-income').value = data.income;
+  document.getElementById('kakeibo-expense').value = data.expense;
+  kakeiboCalc();
+}
+
+function kakeiboCalc() {
+  const incomeText = document.getElementById('kakeibo-income').value;
+  const expenseText = document.getElementById('kakeibo-expense').value;
+  
+  const income = calcKakeiboText(incomeText);
+  const expense = calcKakeiboText(expenseText);
+  const balance = income - expense;
+  
+  document.getElementById('kakeibo-income-total').textContent = `¥${income.toLocaleString()}`;
+  document.getElementById('kakeibo-expense-total').textContent = `¥${expense.toLocaleString()}`;
+  
+  document.getElementById('kakeibo-summary').innerHTML = `
+    <div class="kakeibo-stat"><div class="kakeibo-stat-label">収入</div><div class="kakeibo-stat-value positive">¥${income.toLocaleString()}</div></div>
+    <div class="kakeibo-stat"><div class="kakeibo-stat-label">支出</div><div class="kakeibo-stat-value negative">¥${expense.toLocaleString()}</div></div>
+    <div class="kakeibo-stat"><div class="kakeibo-stat-label">収支</div><div class="kakeibo-stat-value ${balance>=0?'positive':'negative'}">¥${balance.toLocaleString()}</div></div>`;
+  
+  // 保存
+  if (!state.kakeiboMonths[kakeiboYM]) state.kakeiboMonths[kakeiboYM] = { uuid: uuid(), yearMonth: kakeiboYM, income: '', expense: '' };
+  state.kakeiboMonths[kakeiboYM].income = incomeText;
+  state.kakeiboMonths[kakeiboYM].expense = expenseText;
+  saveState(['kakeiboMonths']);
+}
+
+function calcKakeiboText(text) {
+  const lines = text.split('\n');
+  let total = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let numStr = '';
+    for (const ch of trimmed) {
+      // 半角数字 0-9 のみ (charCode 48-57)
+      const code = ch.charCodeAt(0);
+      if (code >= 48 && code <= 57) {
+        numStr += ch;
+      } else if (ch === '-' && numStr === '') {
+        numStr += ch;
+      } else if (code > 127) {
+        // 全角文字 → ここで止める
+        break;
+      } else if (ch === ' ' && numStr === '') {
+        continue;
+      } else {
+        // 半角英字等 → 止めない、スキップ？
+        // 仕様: 全角より右の半角数字もコメント扱い → 全角が出たら止める
+        // 半角英字はどうする？→ 数字のみ抽出を続ける
+        break;
+      }
+    }
+    if (numStr && numStr !== '-') {
+      const n = parseInt(numStr);
+      if (!isNaN(n)) total += n;
+    }
+  }
+  return total;
+}
+
+function renderKakeiboYear() {
+  const year = parseInt(kakeiboYM.split('-')[0]);
+  let html = `<table class="year-table"><tr><th>月</th><th>収入</th><th>支出</th><th>収支</th></tr>`;
+  let totalIncome = 0, totalExpense = 0;
+  
+  for (let m = 1; m <= 12; m++) {
+    const ym = `${year}-${String(m).padStart(2,'0')}`;
+    const data = state.kakeiboMonths[ym];
+    const income = data ? calcKakeiboText(data.income) : 0;
+    const expense = data ? calcKakeiboText(data.expense) : 0;
+    const balance = income - expense;
+    totalIncome += income;
+    totalExpense += expense;
+    
+    html += `<tr>
+      <td>${m}月</td>
+      <td>¥${income.toLocaleString()}</td>
+      <td>¥${expense.toLocaleString()}</td>
+      <td style="color:${balance>=0?'var(--success)':'var(--danger)'}">${balance>=0?'+':''}¥${balance.toLocaleString()}</td>
+    </tr>`;
+  }
+  
+  const totalBalance = totalIncome - totalExpense;
+  html += `<tr class="total-row">
+    <td>合計</td>
+    <td>¥${totalIncome.toLocaleString()}</td>
+    <td>¥${totalExpense.toLocaleString()}</td>
+    <td style="color:${totalBalance>=0?'var(--success)':'var(--danger)'}">${totalBalance>=0?'+':''}¥${totalBalance.toLocaleString()}</td>
+  </tr></table>`;
+  
+  document.getElementById('kakeibo-year-view').innerHTML = html;
+}
+
+// ================================================================
+// MENU ACTIONS
+// ================================================================
+
+// ZIP Export
+async function menuExport() {
+  closeMenu();
+  const zip = new JSZip();
+  const exportData = {
+    version: '1.0.0',
+    exportedAt: new Date().toISOString(),
+    techoDays: state.techoDays,
+    shiftPatterns: state.shiftPatterns,
+    templates: state.templates,
+    techoColumns: state.techoColumns,
+    memoCategories: state.memoCategories,
+    kakeiboMonths: state.kakeiboMonths,
+    settings: state.settings,
+  };
+  zip.file('monogusa_data.json', JSON.stringify(exportData, null, 2));
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `monogusa_${todayStr()}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ZIP Import
+function menuImport() {
+  closeMenu();
+  document.getElementById('file-input').click();
+}
+
+async function handleFileImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const jsonFile = zip.file('monogusa_data.json');
+    if (!jsonFile) { alert('monogusa_data.json が見つかりません'); return; }
+    const data = JSON.parse(await jsonFile.async('string'));
+    
+    const mode = state.settings.importMode || 'overwrite';
+    
+    if (mode === 'overwrite') {
+      // UUID一致は上書き、内容同一はスキップ
+      importMerge(data, true);
+    } else {
+      // diff: UUID一致かつ内容異なる場合は確認
+      importMerge(data, false);
+    }
+    
+    saveState();
+    alert('インポート完了');
+    switchTab(currentTab);
+  } catch(err) {
+    alert('インポートエラー: ' + err.message);
+  }
+  e.target.value = '';
+}
+
+function importMerge(data, overwrite) {
+  // 手帳
+  if (data.techoDays) {
+    for (const [k, v] of Object.entries(data.techoDays)) {
+      const existing = state.techoDays[k];
+      if (!existing || overwrite) {
+        if (!existing || JSON.stringify(existing) !== JSON.stringify(v)) {
+          state.techoDays[k] = v;
+        }
+      }
+    }
+  }
+  // シフトパターン
+  if (data.shiftPatterns) state.shiftPatterns = data.shiftPatterns;
+  // テンプレート
+  if (data.templates) state.templates = data.templates;
+  // 列数
+  if (data.techoColumns) state.techoColumns = data.techoColumns;
+  // メモ
+  if (data.memoCategories) {
+    for (const importCat of data.memoCategories) {
+      const existIdx = state.memoCategories.findIndex(c => c.uuid === importCat.uuid);
+      if (existIdx >= 0) {
+        if (overwrite || JSON.stringify(state.memoCategories[existIdx]) !== JSON.stringify(importCat)) {
+          state.memoCategories[existIdx] = importCat;
+        }
+      } else {
+        state.memoCategories.push(importCat);
+      }
+    }
+  }
+  // 家計簿
+  if (data.kakeiboMonths) {
+    for (const [k, v] of Object.entries(data.kakeiboMonths)) {
+      const existing = state.kakeiboMonths[k];
+      if (!existing || overwrite) {
+        if (!existing || JSON.stringify(existing) !== JSON.stringify(v)) {
+          state.kakeiboMonths[k] = v;
+        }
+      }
+    }
+  }
+}
+
+// Date Correction
+function menuDateCorrection() {
+  closeMenu();
+  const current = state.settings.dateCorrection || 0;
+  const hours = Math.round(current / 3600);
+  const input = prompt(`現在の日付修正値: ${hours}時間\n新しい修正値（時間単位、例: 24 = 1日進む, -24 = 1日戻る）:`, hours);
+  if (input === null) return;
+  state.settings.dateCorrection = parseInt(input) * 3600 || 0;
+  saveState(['settings']);
+  switchTab(currentTab);
+}
+
+// Theme
+function menuTheme() {
+  closeMenu();
+  let html = `<div class="modal-header"><span class="modal-title">テーマ変更</span><button class="modal-close" onclick="closeSubModal()">×</button></div>`;
+  const themes = [
+    { id: 'system', name: 'システム設定に従う' },
+    { id: 'light', name: 'ライト' },
+    { id: 'dark', name: 'ダーク' },
+  ];
+  for (const t of themes) {
+    const sel = state.settings.theme === t.id ? ' style="font-weight:700;color:var(--accent)"' : '';
+    html += `<button class="menu-item"${sel} onclick="setTheme('${t.id}')">${t.name}</button>`;
+  }
+  openSubModal(html);
+}
+
+function setTheme(theme) {
+  state.settings.theme = theme;
+  saveState(['settings']);
+  applyTheme();
+  closeSubModal();
+}
+
+function applyTheme() {
+  const theme = state.settings.theme;
+  if (theme === 'dark') document.body.setAttribute('data-theme', 'dark');
+  else if (theme === 'light') document.body.removeAttribute('data-theme');
+  else {
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.body.setAttribute('data-theme', 'dark');
+    else document.body.removeAttribute('data-theme');
+  }
+}
+
+// Shift Pattern Edit
+function menuShiftEdit() {
+  closeMenu();
+  let html = `<div class="modal-header"><span class="modal-title">シフトパターン編集</span><button class="modal-close" onclick="closeSubModal()">×</button></div>`;
+  html += `<div style="padding:8px">`;
+  for (let i = 0; i < state.shiftPatterns.length; i++) {
+    const p = state.shiftPatterns[i];
+    html += `<div style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:4px">パターン ${p.name} (${p.items.length}/90)</div>
+      <textarea class="text-area" id="shift-edit-${i}" style="min-height:80px" placeholder="1行1項目（例: 日勤、夜勤、休み...）">${p.items.join('\n')}</textarea>
+    </div>`;
+  }
+  html += `<button class="btn btn-primary" style="width:100%" onclick="saveShiftPatterns()">保存</button></div>`;
+  openSubModal(html);
+}
+
+function saveShiftPatterns() {
+  for (let i = 0; i < state.shiftPatterns.length; i++) {
+    const textarea = document.getElementById('shift-edit-' + i);
+    if (textarea) {
+      state.shiftPatterns[i].items = textarea.value.split('\n').map(s => s.trim()).filter(s => s).slice(0, 90);
+    }
+  }
+  saveState(['shiftPatterns']);
+  closeSubModal();
+}
+
+// Template Edit
+function menuTemplateEdit() {
+  closeMenu();
+  let html = `<div class="modal-header"><span class="modal-title">テンプレート編集</span><button class="modal-close" onclick="closeSubModal()">×</button></div>`;
+  html += `<div style="padding:8px">`;
+  for (let i = 0; i < state.templates.length; i++) {
+    const t = state.templates[i];
+    html += `<div style="margin-bottom:8px;display:flex;gap:4px;align-items:center">
+      <input class="text-input" value="${escAttr(t.name)}" id="tpl-name-${i}" placeholder="名前" style="width:80px">
+      <input class="text-input" value="${escAttr(t.main)}" id="tpl-main-${i}" placeholder="メイン">
+      <input class="text-input" value="${escAttr(t.sub)}" id="tpl-sub-${i}" placeholder="サブ" style="width:80px">
+      <button class="btn-icon danger" onclick="deleteTemplate(${i})">🗑</button>
+    </div>`;
+  }
+  html += `<button class="btn btn-outline" style="width:100%;margin:8px 0" onclick="addTemplate()">＋テンプレート追加</button>`;
+  html += `<button class="btn btn-primary" style="width:100%" onclick="saveTemplates()">保存</button></div>`;
+  openSubModal(html);
+}
+
+function addTemplate() {
+  state.templates.push({ uuid: uuid(), name: '', main: '', sub: '' });
+  saveState(['templates']);
+  menuTemplateEdit();
+}
+
+function deleteTemplate(idx) {
+  state.templates.splice(idx, 1);
+  saveState(['templates']);
+  menuTemplateEdit();
+}
+
+function saveTemplates() {
+  for (let i = 0; i < state.templates.length; i++) {
+    const nameEl = document.getElementById('tpl-name-' + i);
+    const mainEl = document.getElementById('tpl-main-' + i);
+    const subEl = document.getElementById('tpl-sub-' + i);
+    if (nameEl) state.templates[i].name = nameEl.value;
+    if (mainEl) state.templates[i].main = mainEl.value;
+    if (subEl) state.templates[i].sub = subEl.value;
+  }
+  saveState(['templates']);
+  closeSubModal();
+}
+
+// Firebase
+function menuFirebase() {
+  closeMenu();
+  const config = state.settings.firebaseConfig;
+  let html = `<div class="modal-header"><span class="modal-title">Firebase同期設定</span><button class="modal-close" onclick="closeSubModal()">×</button></div>
+  <div style="padding:8px">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:8px">FirebaseのConfig JSONを貼り付けてください。</p>
+    <textarea class="text-area" id="firebase-config" style="min-height:120px" placeholder='{"apiKey":"...","authDomain":"...",...}'>${config ? JSON.stringify(config, null, 2) : ''}</textarea>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveFirebaseConfig()">保存</button>
+    ${config ? '<button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="firebaseSync()">今すぐ同期</button>' : ''}
+    ${config ? '<button class="btn btn-danger" style="width:100%;margin-top:4px" onclick="clearFirebaseConfig()">設定をクリア</button>' : ''}
+  </div>`;
+  openSubModal(html);
+}
+
+function saveFirebaseConfig() {
+  try {
+    const text = document.getElementById('firebase-config').value.trim();
+    if (!text) { state.settings.firebaseConfig = null; }
+    else { state.settings.firebaseConfig = JSON.parse(text); }
+    saveState(['settings']);
+    closeSubModal();
+    alert('Firebase設定を保存しました');
+  } catch(e) { alert('JSON形式が不正です'); }
+}
+
+function clearFirebaseConfig() {
+  state.settings.firebaseConfig = null;
+  saveState(['settings']);
+  closeSubModal();
+}
+
+async function firebaseSync() {
+  // Firebase SDK動的読み込み＆同期（将来実装）
+  alert('Firebase同期は今後実装予定です。現在はZIPエクスポート/インポートをご利用ください。');
+}
+
+// Import Mode
+function menuImportMode() {
+  closeMenu();
+  let html = `<div class="modal-header"><span class="modal-title">インポートモード</span><button class="modal-close" onclick="closeSubModal()">×</button></div>`;
+  const modes = [
+    { id: 'overwrite', name: '上書き', desc: 'UUID一致は上書き、内容同一はスキップ' },
+    { id: 'diff', name: '差分', desc: 'UUID一致かつ内容が異なる場合のみ更新' },
+  ];
+  for (const m of modes) {
+    const sel = state.settings.importMode === m.id ? ' style="font-weight:700;color:var(--accent)"' : '';
+    html += `<button class="menu-item"${sel} onclick="setImportMode('${m.id}')"><div><div>${m.name}</div><div style="font-size:11px;color:var(--text2)">${m.desc}</div></div></button>`;
+  }
+  openSubModal(html);
+}
+
+function setImportMode(mode) {
+  state.settings.importMode = mode;
+  saveState(['settings']);
+  closeSubModal();
+}
+
+// ================================================================
+// UTILS
+// ================================================================
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ================================================================
+// INIT
+// ================================================================
+applyTheme();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (state.settings.theme === 'system') applyTheme(); });
+
+// 起動時: 手帳→当日、メモ→当月、家計簿→当月
+techoYM = currentYM();
+kakeiboYM = currentYM();
+renderTecho();
+
+// Click outside modal to close
+document.getElementById('menu-modal').addEventListener('click', e => { if (e.target.id === 'menu-modal') closeMenu(); });
+document.getElementById('sub-modal').addEventListener('click', e => { if (e.target.id === 'sub-modal') closeSubModal(); });
+
+// Register SW
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
