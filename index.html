@@ -221,9 +221,62 @@ function xTplEdit(){closeMenu();let h=`<div class="modal-header"><span class="mo
 function aTpl(){S.memoTemplates.push({uuid:uid(),name:'',content:''});ss(['memoTemplates']);xTplEdit()}
 function dTpl(i){S.memoTemplates.splice(i,1);ss(['memoTemplates']);xTplEdit()}
 function svTpl(){S.memoTemplates.forEach((t,i)=>{const n=document.getElementById('tn'+i),c=document.getElementById('tc'+i);if(n)t.name=n.value;if(c)t.content=c.value});ss(['memoTemplates']);csm()}
-function xFirebase(){closeMenu();const c=S.settings.firebaseConfig;let h=`<div class="modal-header"><span class="modal-title">Firebase同期</span><button class="modal-close" onclick="csm()">×</button></div><div style="padding:8px"><p style="font-size:13px;color:var(--text2);margin-bottom:8px">Config JSONを貼り付け</p><textarea class="text-area" id="fbc" style="min-height:120px">${c?JSON.stringify(c,null,2):''}</textarea><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="svFb()">保存</button>${c?'<button class="btn btn-danger" style="width:100%;margin-top:4px" onclick="clFb()">クリア</button>':''}</div>`;osm(h)}
-function svFb(){try{const t=document.getElementById('fbc').value.trim();S.settings.firebaseConfig=t?JSON.parse(t):null;ss(['settings']);csm();alert('保存しました')}catch(e){alert('JSON形式が不正です')}}
-function clFb(){S.settings.firebaseConfig=null;ss(['settings']);csm()}
+function xFirebase(){closeMenu();const c=S.settings.firebaseConfig,loggedIn=!!window._fbUser;let h=`<div class="modal-header"><span class="modal-title">Firebase同期</span><button class="modal-close" onclick="csm()">×</button></div><div style="padding:8px">`;if(!c){h+=`<p style="font-size:13px;color:var(--text2);margin-bottom:8px">FirebaseのConfig JSONを貼り付けてください。</p><textarea class="text-area" id="fbc" style="min-height:120px" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'></textarea><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="svFb()">設定保存</button>`}else if(!loggedIn){h+=`<p style="font-size:13px;margin-bottom:8px">Firebase設定済み ✓</p><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="fbLogin()">Googleでログイン</button><button class="btn btn-danger" style="width:100%;margin-top:8px" onclick="clFb()">設定クリア</button>`}else{h+=`<p style="font-size:13px;margin-bottom:8px">ログイン中: <strong>${es(window._fbUser.email||'')}</strong></p><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="fbPush()">↑ アップロード</button><button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="fbPull()">↓ ダウンロード</button><button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="fbLogout()">ログアウト</button><button class="btn btn-danger" style="width:100%;margin-top:4px" onclick="clFb()">設定クリア</button>`}h+=`</div>`;osm(h)}
+function svFb(){try{const t=document.getElementById('fbc').value.trim();if(!t)return;S.settings.firebaseConfig=JSON.parse(t);ss(['settings']);csm();fbInit().then(()=>alert('設定を保存しました'))}catch(e){alert('JSON形式が不正です')}}
+function clFb(){S.settings.firebaseConfig=null;window._fbUser=null;window._fbAuth=null;window._fbDb=null;ss(['settings']);csm()}
+async function fbInit(){
+  if(window._fbApp)return;
+  const c=S.settings.firebaseConfig;if(!c)return;
+  // Firebase SDK動的読み込み
+  if(!window.firebase){
+    await loadScript('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
+    await loadScript('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js');
+    await loadScript('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js');
+  }
+  window._fbApp=firebase.initializeApp(c);
+  window._fbAuth=firebase.auth();
+  window._fbDb=firebase.firestore();
+  // 既存ログインセッション復元
+  window._fbAuth.onAuthStateChanged(u=>{window._fbUser=u||null});
+}
+function loadScript(src){return new Promise((ok,ng)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ng;document.head.appendChild(s)})}
+async function fbLogin(){
+  try{
+    await fbInit();
+    const provider=new firebase.auth.GoogleAuthProvider();
+    const result=await window._fbAuth.signInWithPopup(provider);
+    window._fbUser=result.user;
+    csm();xFirebase();
+  }catch(e){alert('ログインエラー: '+e.message)}
+}
+function fbLogout(){if(window._fbAuth)window._fbAuth.signOut();window._fbUser=null;csm();xFirebase()}
+async function fbPush(){
+  try{
+    if(!window._fbDb||!window._fbUser)return;
+    const uid2=window._fbUser.uid;
+    const data={techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,updatedAt:new Date().toISOString()};
+    await window._fbDb.collection('users').doc(uid2).set(data);
+    alert('アップロード完了');
+  }catch(e){alert('アップロードエラー: '+e.message)}
+}
+async function fbPull(){
+  try{
+    if(!window._fbDb||!window._fbUser)return;
+    const uid2=window._fbUser.uid;
+    const doc=await window._fbDb.collection('users').doc(uid2).get();
+    if(!doc.exists){alert('サーバーにデータがありません');return}
+    const d=doc.data();
+    cf('サーバーのデータでローカルを上書きしますか？',()=>{
+      if(d.techoDays)S.techoDays=d.techoDays;
+      if(d.shiftPatterns)S.shiftPatterns=d.shiftPatterns;
+      if(d.techoColumns)S.techoColumns=d.techoColumns;
+      if(d.memoCategories)S.memoCategories=d.memoCategories;
+      if(d.memoTemplates)S.memoTemplates=d.memoTemplates;
+      if(d.kakeiboMonths)S.kakeiboMonths=d.kakeiboMonths;
+      ss();alert('ダウンロード完了');switchTab(ct);
+    });
+  }catch(e){alert('ダウンロードエラー: '+e.message)}
+}
 function xImportMode(){closeMenu();let h=`<div class="modal-header"><span class="modal-title">インポートモード</span><button class="modal-close" onclick="csm()">×</button></div>`;[{id:'overwrite',n:'上書き',d:'UUID一致は上書き、同一はスキップ'},{id:'diff',n:'差分',d:'UUID一致かつ差異ありのみ更新'}].forEach(m=>{const s=S.settings.importMode===m.id?' style="font-weight:700;color:var(--accent)"':'';h+=`<button class="menu-item"${s} onclick="sIM('${m.id}')"><div><div>${m.n}</div><div style="font-size:11px;color:var(--text2)">${m.d}</div></div></button>`});osm(h)}
 function sIM(m){S.settings.importMode=m;ss(['settings']);csm()}
 
@@ -235,6 +288,7 @@ tYM=cym();kYM=cym();rT();
 document.getElementById('menu-modal').addEventListener('click',e=>{if(e.target.id==='menu-modal')closeMenu()});
 document.getElementById('sub-modal').addEventListener('click',e=>{if(e.target.id==='sub-modal')csm()});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+if(S.settings.firebaseConfig)fbInit().catch(()=>{});
 </script>
 </body>
 </html>
