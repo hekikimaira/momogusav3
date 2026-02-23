@@ -237,6 +237,16 @@ function lsc(src){return new Promise((ok,ng)=>{const s=document.createElement('s
 async function fbLogin(){try{await fbInit();const r=await window._fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());window._fbUser=r.user;csm();await fbMerge()}catch(e){alert('ログインエラー: '+e.message)}}
 function fbLogout(){if(window._fbAuth)window._fbAuth.signOut();window._fbUser=null;csm()}
 
+// 比較用：タイムスタンプ等を除外して実質的な内容だけ比較
+function stripMeta(obj){
+  if(!obj||typeof obj!=='object')return obj;
+  const o=Array.isArray(obj)?[...obj]:{...obj};
+  delete o.updatedAt;delete o.createdAt;delete o.sortOrder;
+  for(const k in o){if(typeof o[k]==='object'&&o[k]!==null)o[k]=stripMeta(o[k])}
+  return o;
+}
+function sameContent(a,b){return JSON.stringify(stripMeta(a))===JSON.stringify(stripMeta(b))}
+
 // 自動マージ（起動時・ログイン時）
 async function fbMerge(){
   if(!window._fbDb||!window._fbUser)return;
@@ -247,18 +257,18 @@ async function fbMerge(){
     // 手帳マージ
     if(sv2.techoDays){for(const[k,v]of Object.entries(sv2.techoDays)){
       if(!S.techoDays[k])S.techoDays[k]=v;
-      else if(JSON.stringify(S.techoDays[k])!==JSON.stringify(v))conflicts.push({type:'手帳',key:k,local:S.techoDays[k],server:v,apply:sv3=>{S.techoDays[k]=sv3}});
+      else if(!sameContent(S.techoDays[k],v))conflicts.push({type:'手帳',key:k,local:S.techoDays[k],server:v,apply:sv3=>{S.techoDays[k]=sv3}});
     }}
     // 家計簿マージ
     if(sv2.kakeiboMonths){for(const[k,v]of Object.entries(sv2.kakeiboMonths)){
       if(!S.kakeiboMonths[k])S.kakeiboMonths[k]=v;
-      else if(JSON.stringify(S.kakeiboMonths[k])!==JSON.stringify(v))conflicts.push({type:'家計簿',key:k,local:S.kakeiboMonths[k],server:v,apply:sv3=>{S.kakeiboMonths[k]=sv3}});
+      else if(!sameContent(S.kakeiboMonths[k],v))conflicts.push({type:'家計簿',key:k,local:S.kakeiboMonths[k],server:v,apply:sv3=>{S.kakeiboMonths[k]=sv3}});
     }}
     // メモマージ（UUID比較）
     if(sv2.memoCategories){for(const sc of sv2.memoCategories){
       const li=S.memoCategories.findIndex(c=>c.uuid===sc.uuid);
       if(li<0)S.memoCategories.push(sc);
-      else if(JSON.stringify(S.memoCategories[li])!==JSON.stringify(sc)){
+      else if(!sameContent(S.memoCategories[li],sc)){
         const idx=li;conflicts.push({type:'メモ',key:sc.name,local:S.memoCategories[idx],server:sc,apply:sv3=>{S.memoCategories[idx]=sv3}});
       }
     }}
@@ -266,9 +276,9 @@ async function fbMerge(){
     if(sv2.memoTemplates){for(const st of sv2.memoTemplates){
       const li=S.memoTemplates.findIndex(t=>t.uuid===st.uuid);
       if(li<0)S.memoTemplates.push(st);
-      else if(JSON.stringify(S.memoTemplates[li])!==JSON.stringify(st))S.memoTemplates[li]=st;
+      else if(!sameContent(S.memoTemplates[li],st))S.memoTemplates[li]=st;
     }}
-    // シフト・列数はサーバー優先（競合少ない）
+    // シフト・列数はサーバー優先
     if(sv2.shiftPatterns)S.shiftPatterns=sv2.shiftPatterns;
     if(sv2.techoColumns&&sv2.techoColumns>S.techoColumns)S.techoColumns=sv2.techoColumns;
 
@@ -336,6 +346,9 @@ document.getElementById('menu-modal').addEventListener('click',e=>{if(e.target.i
 document.getElementById('sub-modal').addEventListener('click',e=>{if(e.target.id==='sub-modal')csm()});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 fbInit().catch(()=>{});
+// ページ離脱時に即時同期
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&window._fbDb&&window._fbUser){if(_fbSyncTimer){clearTimeout(_fbSyncTimer);_fbSyncTimer=null}fbPushSilent()}});
+window.addEventListener('beforeunload',()=>{if(window._fbDb&&window._fbUser)fbPushSilent()});
 </script>
 </body>
 </html>
