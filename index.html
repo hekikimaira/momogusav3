@@ -130,7 +130,10 @@ textarea{resize:vertical}
 <script>
 const DB='monogusa_',sv=(k,v)=>{try{localStorage.setItem(DB+k,JSON.stringify(v))}catch(e){}},ld=(k,d)=>{try{const v=localStorage.getItem(DB+k);return v?JSON.parse(v):d}catch(e){return d}},uid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)});
 let S={techoDays:ld('techoDays',{}),shiftPatterns:ld('shiftPatterns',[{uuid:uid(),name:'A',items:[]},{uuid:uid(),name:'B',items:[]},{uuid:uid(),name:'C',items:[]},{uuid:uid(),name:'D',items:[]}]),techoColumns:ld('techoColumns',1),memoCategories:ld('memoCategories',[]),memoTemplates:ld('memoTemplates',[]),kakeiboMonths:ld('kakeiboMonths',{}),settings:ld('settings',{dateCorrection:0,theme:'system',importMode:'overwrite'})};
-function ss(keys){if(!keys)keys=Object.keys(S);for(const k of keys)sv(k,S[k])}
+function ss(keys){if(!keys)keys=Object.keys(S);for(const k of keys)sv(k,S[k]);fbAutoSync();}
+let _fbSyncTimer=null;
+function fbAutoSync(){if(_fbSyncTimer)clearTimeout(_fbSyncTimer);_fbSyncTimer=setTimeout(()=>{if(window._fbDb&&window._fbUser)fbPushSilent().catch(()=>{})},2000);}
+async function fbPushSilent(){if(!window._fbDb||!window._fbUser)return;try{await window._fbDb.collection('users').doc(window._fbUser.uid).set({techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,updatedAt:new Date().toISOString()})}catch(e){console.error('auto sync error',e)}}
 function cn(){return new Date(Date.now()+(S.settings.dateCorrection||0))}
 function ts(){const d=cn();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function cym(){const d=cn();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
@@ -223,18 +226,83 @@ function aTpl(){S.memoTemplates.push({uuid:uid(),name:'',content:''});ss(['memoT
 function dTpl(i){S.memoTemplates.splice(i,1);ss(['memoTemplates']);xTplEdit()}
 function svTpl(){S.memoTemplates.forEach((t,i)=>{const n=document.getElementById('tn'+i),c=document.getElementById('tc'+i);if(n)t.name=n.value;if(c)t.content=c.value});ss(['memoTemplates']);csm()}
 const FB_CONFIG={apiKey:"AIzaSyDJzuz6MnNa5FYh1byDXKXnt4bnhic7iXU",authDomain:"monogusav3.firebaseapp.com",projectId:"monogusav3",storageBucket:"monogusav3.firebasestorage.app",messagingSenderId:"594529013883",appId:"1:594529013883:web:7760632dfe3fac99fd92de"};
-function xFirebase(){closeMenu();const loggedIn=!!window._fbUser;let h=`<div class="modal-header"><span class="modal-title">Firebase同期</span><button class="modal-close" onclick="csm()">×</button></div><div style="padding:8px">`;if(!loggedIn){h+=`<p style="font-size:13px;margin-bottom:12px">Googleアカウントでログインしてデータを同期できます。</p><button class="btn btn-primary" style="width:100%" onclick="fbLogin()">Googleでログイン</button>`}else{h+=`<p style="font-size:13px;margin-bottom:12px">ログイン中: <strong>${es(window._fbUser.email||'')}</strong></p><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="fbPush()">↑ アップロード</button><button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="fbPull()">↓ ダウンロード</button><button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="fbLogout()">ログアウト</button>`}h+=`</div>`;osm(h)}
+function xFirebase(){closeMenu();const li=!!window._fbUser;let h=`<div class="modal-header"><span class="modal-title">Firebase同期</span><button class="modal-close" onclick="csm()">×</button></div><div style="padding:8px">`;if(!li){h+=`<p style="font-size:13px;margin-bottom:12px">Googleアカウントでログインすると自動同期されます。</p><button class="btn btn-primary" style="width:100%" onclick="fbLogin()">Googleでログイン</button>`}else{h+=`<p style="font-size:13px;margin-bottom:8px">ログイン中: <strong>${es(window._fbUser.email||'')}</strong></p><p style="font-size:12px;color:var(--text2);margin-bottom:12px">データは自動的に同期されます。</p><button class="btn btn-outline" style="width:100%" onclick="fbLogout()">ログアウト</button>`}h+=`</div>`;osm(h)}
 async function fbInit(){
   if(window._fbApp)return;
   if(!window.firebase){await lsc('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');await lsc('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js');await lsc('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js')}
   window._fbApp=firebase.initializeApp(FB_CONFIG);window._fbAuth=firebase.auth();window._fbDb=firebase.firestore();
-  window._fbAuth.onAuthStateChanged(u=>{window._fbUser=u||null});
+  window._fbAuth.onAuthStateChanged(async u=>{window._fbUser=u||null;if(u)await fbMerge()});
 }
 function lsc(src){return new Promise((ok,ng)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ng;document.head.appendChild(s)})}
-async function fbLogin(){try{await fbInit();const r=await window._fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());window._fbUser=r.user;csm();xFirebase()}catch(e){alert('ログインエラー: '+e.message)}}
-function fbLogout(){if(window._fbAuth)window._fbAuth.signOut();window._fbUser=null;csm();xFirebase()}
-async function fbPush(){try{if(!window._fbDb||!window._fbUser)return;await window._fbDb.collection('users').doc(window._fbUser.uid).set({techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,updatedAt:new Date().toISOString()});alert('アップロード完了')}catch(e){alert('エラー: '+e.message)}}
-async function fbPull(){try{if(!window._fbDb||!window._fbUser)return;const doc=await window._fbDb.collection('users').doc(window._fbUser.uid).get();if(!doc.exists){alert('サーバーにデータがありません');return}const d=doc.data();cf('サーバーのデータでローカルを上書きしますか？',()=>{if(d.techoDays)S.techoDays=d.techoDays;if(d.shiftPatterns)S.shiftPatterns=d.shiftPatterns;if(d.techoColumns)S.techoColumns=d.techoColumns;if(d.memoCategories)S.memoCategories=d.memoCategories;if(d.memoTemplates)S.memoTemplates=d.memoTemplates;if(d.kakeiboMonths)S.kakeiboMonths=d.kakeiboMonths;ss();alert('ダウンロード完了');switchTab(ct)})}catch(e){alert('エラー: '+e.message)}}
+async function fbLogin(){try{await fbInit();const r=await window._fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());window._fbUser=r.user;csm();await fbMerge()}catch(e){alert('ログインエラー: '+e.message)}}
+function fbLogout(){if(window._fbAuth)window._fbAuth.signOut();window._fbUser=null;csm()}
+
+// 自動マージ（起動時・ログイン時）
+async function fbMerge(){
+  if(!window._fbDb||!window._fbUser)return;
+  try{
+    const doc=await window._fbDb.collection('users').doc(window._fbUser.uid).get();
+    if(!doc.exists){fbPushSilent();return}
+    const sv2=doc.data();let conflicts=[];
+    // 手帳マージ
+    if(sv2.techoDays){for(const[k,v]of Object.entries(sv2.techoDays)){
+      if(!S.techoDays[k])S.techoDays[k]=v;
+      else if(JSON.stringify(S.techoDays[k])!==JSON.stringify(v))conflicts.push({type:'手帳',key:k,local:S.techoDays[k],server:v,apply:sv3=>{S.techoDays[k]=sv3}});
+    }}
+    // 家計簿マージ
+    if(sv2.kakeiboMonths){for(const[k,v]of Object.entries(sv2.kakeiboMonths)){
+      if(!S.kakeiboMonths[k])S.kakeiboMonths[k]=v;
+      else if(JSON.stringify(S.kakeiboMonths[k])!==JSON.stringify(v))conflicts.push({type:'家計簿',key:k,local:S.kakeiboMonths[k],server:v,apply:sv3=>{S.kakeiboMonths[k]=sv3}});
+    }}
+    // メモマージ（UUID比較）
+    if(sv2.memoCategories){for(const sc of sv2.memoCategories){
+      const li=S.memoCategories.findIndex(c=>c.uuid===sc.uuid);
+      if(li<0)S.memoCategories.push(sc);
+      else if(JSON.stringify(S.memoCategories[li])!==JSON.stringify(sc)){
+        const idx=li;conflicts.push({type:'メモ',key:sc.name,local:S.memoCategories[idx],server:sc,apply:sv3=>{S.memoCategories[idx]=sv3}});
+      }
+    }}
+    // テンプレマージ
+    if(sv2.memoTemplates){for(const st of sv2.memoTemplates){
+      const li=S.memoTemplates.findIndex(t=>t.uuid===st.uuid);
+      if(li<0)S.memoTemplates.push(st);
+      else if(JSON.stringify(S.memoTemplates[li])!==JSON.stringify(st))S.memoTemplates[li]=st;
+    }}
+    // シフト・列数はサーバー優先（競合少ない）
+    if(sv2.shiftPatterns)S.shiftPatterns=sv2.shiftPatterns;
+    if(sv2.techoColumns&&sv2.techoColumns>S.techoColumns)S.techoColumns=sv2.techoColumns;
+
+    if(conflicts.length>0){await resolveConflicts(conflicts)}
+    ss();switchTab(ct);
+  }catch(e){console.error('merge error',e)}
+}
+
+// 競合解決UI
+let _conflicts=[],_cIdx=0;
+function resolveConflicts(list){
+  return new Promise(ok=>{_conflicts=list;_cIdx=0;window._conflictDone=ok;showConflict()});
+}
+function showConflict(){
+  if(_cIdx>=_conflicts.length){window._conflictDone();return}
+  const c=_conflicts[_cIdx];
+  const localPrev=typeof c.local==='object'?JSON.stringify(c.local).substring(0,80)+'...':'';
+  const serverPrev=typeof c.server==='object'?JSON.stringify(c.server).substring(0,80)+'...':'';
+  let h=`<div class="modal-header"><span class="modal-title">競合 (${_cIdx+1}/${_conflicts.length})</span></div><div style="padding:8px">`;
+  h+=`<p style="font-size:13px;font-weight:600;margin-bottom:8px">${es(c.type)}: ${es(c.key)}</p>`;
+  h+=`<div style="margin-bottom:8px;padding:8px;background:var(--bg);border-radius:var(--radius);font-size:11px"><strong>ローカル:</strong><br>${es(localPrev)}</div>`;
+  h+=`<div style="margin-bottom:12px;padding:8px;background:var(--bg);border-radius:var(--radius);font-size:11px"><strong>サーバー:</strong><br>${es(serverPrev)}</div>`;
+  h+=`<button class="btn btn-outline" style="width:100%;margin-bottom:4px" onclick="pickConflict('local')">ローカルを使う</button>`;
+  h+=`<button class="btn btn-primary" style="width:100%" onclick="pickConflict('server')">サーバーを使う</button>`;
+  h+=`</div>`;osm(h);
+}
+function pickConflict(choice){
+  const c=_conflicts[_cIdx];
+  if(choice==='server')c.apply(c.server);
+  // localならそのまま
+  _cIdx++;
+  if(_cIdx>=_conflicts.length){csm();window._conflictDone()}
+  else showConflict();
+}
 function xImportMode(){closeMenu();let h=`<div class="modal-header"><span class="modal-title">インポートモード</span><button class="modal-close" onclick="csm()">×</button></div>`;[{id:'overwrite',n:'上書き',d:'UUID一致は上書き、同一はスキップ'},{id:'diff',n:'差分',d:'UUID一致かつ差異ありのみ更新'}].forEach(m=>{const s=S.settings.importMode===m.id?' style="font-weight:700;color:var(--accent)"':'';h+=`<button class="menu-item"${s} onclick="sIM('${m.id}')"><div><div>${m.n}</div><div style="font-size:11px;color:var(--text2)">${m.d}</div></div></button>`});osm(h)}
 function sIM(m){S.settings.importMode=m;ss(['settings']);csm()}
 
