@@ -282,23 +282,42 @@ let _conflicts=[],_cIdx=0;
 function resolveConflicts(list){
   return new Promise(ok=>{_conflicts=list;_cIdx=0;window._conflictDone=ok;showConflict()});
 }
+function fmtConflict(type,data){
+  if(!data||typeof data!=='object')return '(空)';
+  if(type==='手帳'){
+    // data = {uuid, date, entries:[{main,col},...]}
+    const d=data.date||'';const ents=(data.entries||[]).map(e=>e.main||'(空)').filter(s=>s!=='(空)');
+    return d+(ents.length?' : '+ents.join(', '):'(空)');
+  }
+  if(type==='家計簿'){
+    const ym=data.yearMonth||'';
+    const inc=data.income?data.income.split('\n').slice(0,3).join(', '):'(なし)';
+    const exp=data.expense?data.expense.split('\n').slice(0,3).join(', '):'(なし)';
+    return `${ym}\n収入: ${inc}\n支出: ${exp}`;
+  }
+  if(type==='メモ'){
+    // data = {uuid, name, subs:[{name,content},...]}
+    const n=data.name||'';const subs=(data.subs||[]).map(s=>s.name+(s.content?`(${s.content.length}字)`:'')).slice(0,5);
+    return `${n}\n${subs.join(', ')}`;
+  }
+  return JSON.stringify(data).substring(0,100);
+}
 function showConflict(){
   if(_cIdx>=_conflicts.length){window._conflictDone();return}
   const c=_conflicts[_cIdx];
-  const localPrev=typeof c.local==='object'?JSON.stringify(c.local).substring(0,80)+'...':'';
-  const serverPrev=typeof c.server==='object'?JSON.stringify(c.server).substring(0,80)+'...':'';
+  const lp=fmtConflict(c.type,c.local);
+  const sp=fmtConflict(c.type,c.server);
   let h=`<div class="modal-header"><span class="modal-title">競合 (${_cIdx+1}/${_conflicts.length})</span></div><div style="padding:8px">`;
   h+=`<p style="font-size:13px;font-weight:600;margin-bottom:8px">${es(c.type)}: ${es(c.key)}</p>`;
-  h+=`<div style="margin-bottom:8px;padding:8px;background:var(--bg);border-radius:var(--radius);font-size:11px"><strong>ローカル:</strong><br>${es(localPrev)}</div>`;
-  h+=`<div style="margin-bottom:12px;padding:8px;background:var(--bg);border-radius:var(--radius);font-size:11px"><strong>サーバー:</strong><br>${es(serverPrev)}</div>`;
-  h+=`<button class="btn btn-outline" style="width:100%;margin-bottom:4px" onclick="pickConflict('local')">ローカルを使う</button>`;
-  h+=`<button class="btn btn-primary" style="width:100%" onclick="pickConflict('server')">サーバーを使う</button>`;
+  h+=`<div style="margin-bottom:8px;padding:8px;background:var(--bg);border-radius:var(--radius);font-size:12px;white-space:pre-wrap"><strong>📱 ローカル:</strong>\n${es(lp)}</div>`;
+  h+=`<div style="margin-bottom:12px;padding:8px;background:var(--bg);border-radius:var(--radius);font-size:12px;white-space:pre-wrap"><strong>☁️ サーバー:</strong>\n${es(sp)}</div>`;
+  h+=`<button class="btn btn-outline" style="width:100%;margin-bottom:4px" onclick="pickConflict('local')">📱 ローカルを使う</button>`;
+  h+=`<button class="btn btn-primary" style="width:100%" onclick="pickConflict('server')">☁️ サーバーを使う</button>`;
   h+=`</div>`;osm(h);
 }
 function pickConflict(choice){
   const c=_conflicts[_cIdx];
   if(choice==='server')c.apply(c.server);
-  // localならそのまま
   _cIdx++;
   if(_cIdx>=_conflicts.length){csm();window._conflictDone()}
   else showConflict();
