@@ -9,8 +9,8 @@
 <title>ものぐさ手帳</title>
 <link rel="manifest" href="manifest.json">
 <style>
-:root{--bg:#f5f5f0;--bg2:#fff;--text:#1a1a2e;--text2:#555;--accent:#2563eb;--accent2:#1d4ed8;--border:#d4d4d4;--header-bg:#1a1a2e;--header-text:#f5f5f0;--danger:#dc2626;--success:#16a34a;--input-bg:#fff;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:8px;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
-[data-theme="dark"]{--bg:#0f0f1a;--bg2:#1a1a2e;--text:#e8e8e8;--text2:#aaa;--border:#333;--header-bg:#0a0a14;--input-bg:#1a1a2e;--shadow:0 1px 3px rgba(0,0,0,.3)}
+:root{--bg:#f5f5f0;--bg2:#fff;--text:#1a1a2e;--text2:#555;--accent:#2563eb;--accent2:#1d4ed8;--border:#d4d4d4;--header-bg:#1a1a2e;--header-text:#f5f5f0;--danger:#dc2626;--success:#16a34a;--input-bg:#fff;--radius:8px;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+[data-theme="dark"]{--bg:#0f0f1a;--bg2:#1a1a2e;--text:#e8e8e8;--text2:#aaa;--border:#333;--header-bg:#0a0a14;--input-bg:#1a1a2e}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;display:flex;flex-direction:column;-webkit-text-size-adjust:100%;padding-top:var(--safe-top);padding-bottom:var(--safe-bottom)}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
@@ -133,7 +133,7 @@ let S={techoDays:ld('techoDays',{}),shiftPatterns:ld('shiftPatterns',[{uuid:uid(
 function ss(keys){if(!keys)keys=Object.keys(S);for(const k of keys)sv(k,S[k]);fbAutoSync();}
 let _fbSyncTimer=null;
 function fbAutoSync(){if(_fbSyncTimer)clearTimeout(_fbSyncTimer);_fbSyncTimer=setTimeout(()=>{if(window._fbDb&&window._fbUser)fbPushSilent().catch(()=>{})},2000);}
-async function fbPushSilent(){if(!window._fbDb||!window._fbUser)return;try{await window._fbDb.collection('users').doc(window._fbUser.uid).set({techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,updatedAt:new Date().toISOString()})}catch(e){console.error('auto sync error',e)}}
+async function fbPushSilent(){if(!window._fbDb||!window._fbUser)return;try{await window._fbDb.collection('users').doc(window._fbUser.uid).set({techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,updatedAt:new Date().toISOString()});sv('lastSyncAt',new Date().toISOString())}catch(e){console.error('auto sync error',e)}}
 function cn(){return new Date(Date.now()+(S.settings.dateCorrection||0))}
 function ts(){const d=cn();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function cym(){const d=cn();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
@@ -188,7 +188,8 @@ let mC=ld('lastMemoCat',null),mS=ld('lastMemoSub',null);
 function rM(){const cs=document.getElementById('mc');let h='<option value="">-- 大カテゴリ --</option>';[...S.memoCategories].sort((a,b)=>a.sortOrder-b.sortOrder).forEach(c=>{h+=`<option value="${c.uuid}"${mC===c.uuid?' selected':''}>${es(c.name)}</option>`});cs.innerHTML=h;mSelCat()}
 function mSelCat(){const u=document.getElementById('mc').value;mC=u||null;sv('lastMemoCat',mC);const ss2=document.getElementById('ms');let h='<option value="">-- 小カテゴリ --</option>';if(u){const cat=S.memoCategories.find(c=>c.uuid===u);if(cat)[...cat.subs].sort((a,b)=>a.sortOrder-b.sortOrder).forEach(s=>{h+=`<option value="${s.uuid}"${mS===s.uuid?' selected':''}>${es(s.name)}</option>`})}ss2.innerHTML=h;mSelSub()}
 function mSelSub(){const u=document.getElementById('ms').value;mS=u||null;sv('lastMemoSub',mS);const ta=document.getElementById('mt');if(mC&&mS){const cat=S.memoCategories.find(c=>c.uuid===mC),sub=cat?.subs?.find(s=>s.uuid===mS);ta.value=sub?.content||'';ta.disabled=false}else{ta.value='';ta.disabled=true}}
-function mInp(){if(!mC||!mS)return;const v=document.getElementById('mt').value,ci=S.memoCategories.findIndex(c=>c.uuid===mC);if(ci<0)return;const si=S.memoCategories[ci].subs.findIndex(s=>s.uuid===mS);if(si<0)return;S.memoCategories[ci].subs[si].content=v;S.memoCategories[ci].subs[si].updatedAt=new Date().toISOString();ss(['memoCategories'])}
+let _mInpTimer=null;
+function mInp(){if(!mC||!mS)return;const v=document.getElementById('mt').value,ci=S.memoCategories.findIndex(c=>c.uuid===mC);if(ci<0)return;const si=S.memoCategories[ci].subs.findIndex(s=>s.uuid===mS);if(si<0)return;S.memoCategories[ci].subs[si].content=v;S.memoCategories[ci].subs[si].updatedAt=new Date().toISOString();sv('memoCategories',S.memoCategories);if(_mInpTimer)clearTimeout(_mInpTimer);_mInpTimer=setTimeout(()=>ss(['memoCategories']),1000)}
 function mAddCat(){const n=prompt('大カテゴリ名:');if(!n)return;S.memoCategories.push({uuid:uid(),name:n,subs:[],sortOrder:S.memoCategories.length});ss(['memoCategories']);mC=S.memoCategories[S.memoCategories.length-1].uuid;rM()}
 function mAddSub(){if(!mC){alert('大カテゴリを選択してください');return}const n=prompt('小カテゴリ名:');if(!n)return;const ci=S.memoCategories.findIndex(c=>c.uuid===mC);if(ci<0)return;const sub={uuid:uid(),name:n,content:'',sortOrder:S.memoCategories[ci].subs.length,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};S.memoCategories[ci].subs.push(sub);ss(['memoCategories']);mS=sub.uuid;rM()}
 function mAddSubMenu(){if(!mC){alert('大カテゴリを選択してください');return}let h=`<div class="modal-header"><span class="modal-title">小カテゴリ追加</span><button class="modal-close" onclick="csm()">×</button></div>`;h+=`<button class="menu-item" onclick="csm();mAddSub()"><span class="menu-icon">✏️</span>手入力</button>`;h+=`<button class="menu-item" onclick="csm();mAddSubToday()"><span class="menu-icon">📅</span>今日の日付</button>`;h+=`<button class="menu-item" onclick="csm();mAddSubSeq()"><span class="menu-icon">🔢</span>連番（＋1）</button>`;osm(h)}
@@ -206,8 +207,9 @@ let kYM=ld('lastKakeiboYM',null)||cym(),kMd=ld('lastKakeiboMode',null)||'month';
 function kNav(n){kYM=am(kYM,n);sv('lastKakeiboYM',kYM);rK()}
 function kMode(m){kMd=m;sv('lastKakeiboMode',kMd);document.getElementById('km-m').style.fontWeight=m==='month'?'700':'400';document.getElementById('km-y').style.fontWeight=m==='year'?'700':'400';document.getElementById('k-mv').style.display=m==='month'?'':'none';document.getElementById('k-yv').style.display=m==='year'?'':'none';rK()}
 function rK(){const[y,m]=kYM.split('-').map(Number);document.getElementById('k-label').textContent=kMd==='month'?`${y}年${m}月`:`${y}年`;if(kMd==='month')rKM();else rKY()}
-function rKM(){let d=S.kakeiboMonths[kYM];if(!d){d={uuid:uid(),yearMonth:kYM,income:'',expense:''};S.kakeiboMonths[kYM]=d;ss(['kakeiboMonths'])}document.getElementById('k-i').value=d.income;document.getElementById('k-e').value=d.expense;kCalc()}
-function kCalc(){const it=document.getElementById('k-i').value,et=document.getElementById('k-e').value,inc=ck(it),exp=ck(et),bal=inc-exp;document.getElementById('k-it').textContent=`¥${inc.toLocaleString()}`;document.getElementById('k-et').textContent=`¥${exp.toLocaleString()}`;document.getElementById('k-sum').innerHTML=`<div class="kakeibo-stat"><div class="kakeibo-stat-label">収入</div><div class="kakeibo-stat-value positive">¥${inc.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">支出</div><div class="kakeibo-stat-value negative">¥${exp.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">収支</div><div class="kakeibo-stat-value ${bal>=0?'positive':'negative'}">¥${bal.toLocaleString()}</div></div>`;if(!S.kakeiboMonths[kYM])S.kakeiboMonths[kYM]={uuid:uid(),yearMonth:kYM,income:'',expense:''};S.kakeiboMonths[kYM].income=it;S.kakeiboMonths[kYM].expense=et;ss(['kakeiboMonths'])}
+function rKM(){let d=S.kakeiboMonths[kYM];if(!d){d={uuid:uid(),yearMonth:kYM,income:'',expense:''};S.kakeiboMonths[kYM]=d;sv('kakeiboMonths',S.kakeiboMonths)}document.getElementById('k-i').value=d.income;document.getElementById('k-e').value=d.expense;kCalc()}
+let _kCalcTimer=null;
+function kCalc(){const it=document.getElementById('k-i').value,et=document.getElementById('k-e').value,inc=ck(it),exp=ck(et),bal=inc-exp;document.getElementById('k-it').textContent=`¥${inc.toLocaleString()}`;document.getElementById('k-et').textContent=`¥${exp.toLocaleString()}`;document.getElementById('k-sum').innerHTML=`<div class="kakeibo-stat"><div class="kakeibo-stat-label">収入</div><div class="kakeibo-stat-value positive">¥${inc.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">支出</div><div class="kakeibo-stat-value negative">¥${exp.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">収支</div><div class="kakeibo-stat-value ${bal>=0?'positive':'negative'}">¥${bal.toLocaleString()}</div></div>`;if(!S.kakeiboMonths[kYM])S.kakeiboMonths[kYM]={uuid:uid(),yearMonth:kYM,income:'',expense:''};S.kakeiboMonths[kYM].income=it;S.kakeiboMonths[kYM].expense=et;sv('kakeiboMonths',S.kakeiboMonths);if(_kCalcTimer)clearTimeout(_kCalcTimer);_kCalcTimer=setTimeout(()=>ss(['kakeiboMonths']),1000)}
 function ck(t){let s=0;for(const l of t.split('\n')){const tr=l.trim();if(!tr)continue;let n='';for(const c of tr){const cd=c.charCodeAt(0);if(cd>=48&&cd<=57)n+=c;else if(c==='-'&&n==='')n+=c;else if(cd>127)break;else if(c===' '&&n==='')continue;else break}if(n&&n!=='-'){const v=parseInt(n);if(!isNaN(v))s+=v}}return s}
 function rKY(){const yr=+kYM.split('-')[0];let h='<table class="year-table"><tr><th>月</th><th>収入</th><th>支出</th><th>収支</th></tr>',ti=0,te=0;for(let m=1;m<=12;m++){const ym=`${yr}-${String(m).padStart(2,'0')}`,d=S.kakeiboMonths[ym],inc=d?ck(d.income):0,exp=d?ck(d.expense):0,bal=inc-exp;ti+=inc;te+=exp;h+=`<tr><td>${m}月</td><td>¥${inc.toLocaleString()}</td><td>¥${exp.toLocaleString()}</td><td style="color:${bal>=0?'var(--success)':'var(--danger)'}">${bal>=0?'+':''}¥${bal.toLocaleString()}</td></tr>`}const tb=ti-te;h+=`<tr class="total-row"><td>合計</td><td>¥${ti.toLocaleString()}</td><td>¥${te.toLocaleString()}</td><td style="color:${tb>=0?'var(--success)':'var(--danger)'}">${tb>=0?'+':''}¥${tb.toLocaleString()}</td></tr></table>`;document.getElementById('k-yv').innerHTML=h}
 
@@ -234,16 +236,14 @@ async function fbInit(){
   window._fbAuth.onAuthStateChanged(async u=>{window._fbUser=u||null;if(u)await fbMerge()});
 }
 function lsc(src){return new Promise((ok,ng)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ng;document.head.appendChild(s)})}
-async function fbLogin(){try{await fbInit();const r=await window._fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());window._fbUser=r.user;csm();await fbMerge()}catch(e){alert('ログインエラー: '+e.message)}}
+async function fbLogin(){try{await fbInit();await window._fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());csm()}catch(e){alert('ログインエラー: '+e.message)}}
 function fbLogout(){if(window._fbAuth)window._fbAuth.signOut();window._fbUser=null;csm()}
 
 // 比較用：タイムスタンプ等を除外して実質的な内容だけ比較
 function stripMeta(obj){
   if(!obj||typeof obj!=='object')return obj;
-  const o=Array.isArray(obj)?[...obj]:{...obj};
-  delete o.updatedAt;delete o.createdAt;delete o.sortOrder;
-  for(const k in o){if(typeof o[k]==='object'&&o[k]!==null)o[k]=stripMeta(o[k])}
-  return o;
+  if(Array.isArray(obj))return obj.map(v=>stripMeta(v));
+  const o={};for(const k in obj){if(k==='updatedAt'||k==='createdAt'||k==='sortOrder')continue;o[k]=stripMeta(obj[k])}return o;
 }
 function sameContent(a,b){return JSON.stringify(stripMeta(a))===JSON.stringify(stripMeta(b))}
 
@@ -347,8 +347,26 @@ document.getElementById('sub-modal').addEventListener('click',e=>{if(e.target.id
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 fbInit().catch(()=>{});
 // ページ離脱時に即時同期
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&window._fbDb&&window._fbUser){if(_fbSyncTimer){clearTimeout(_fbSyncTimer);_fbSyncTimer=null}fbPushSilent()}});
-window.addEventListener('beforeunload',()=>{if(window._fbDb&&window._fbUser)fbPushSilent()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){if(_fbSyncTimer){clearTimeout(_fbSyncTimer);_fbSyncTimer=null}if(window._fbDb&&window._fbUser)fbPushSilent()}});
+// 同期期限チェック
+(function checkSyncExpiry(){
+  const last=ld('lastSyncAt',null);if(!last)return;
+  const elapsed=Date.now()-new Date(last).getTime();
+  const days=Math.floor(elapsed/86400000);
+  const EXPIRE=30,WARN=23;
+  if(days>=EXPIRE){
+    // 30日超過→データ削除
+    osm(`<div class="modal-header"><span class="modal-title">⚠️ データ削除</span></div><div style="padding:12px"><p style="font-size:14px;line-height:1.6;margin-bottom:12px">Firebase同期が<strong>${days}日間</strong>行われていません。<br>安全のためローカルデータを削除します。</p><p style="font-size:12px;color:var(--text2);margin-bottom:12px">再度ログインすればサーバーからデータを復元できます。</p><button class="btn btn-danger" style="width:100%" onclick="doSyncExpire()">確認</button></div>`);
+  }else if(days>=WARN){
+    const remain=EXPIRE-days;
+    osm(`<div class="modal-header"><span class="modal-title">⚠️ 同期の警告</span></div><div style="padding:12px"><p style="font-size:14px;line-height:1.6;margin-bottom:12px">Firebase同期が<strong>${days}日間</strong>行われていません。<br>あと<strong>${remain}日</strong>でローカルデータが自動削除されます。</p><p style="font-size:12px;color:var(--text2);margin-bottom:12px">ログインして同期すると期限がリセットされます。</p><button class="btn btn-primary" style="width:100%" onclick="csm()">閉じる</button></div>`);
+  }
+})();
+function doSyncExpire(){
+  S.techoDays={};S.shiftPatterns=[{uuid:uid(),name:'A',items:[]},{uuid:uid(),name:'B',items:[]},{uuid:uid(),name:'C',items:[]},{uuid:uid(),name:'D',items:[]}];
+  S.techoColumns=1;S.memoCategories=[];S.memoTemplates=[];S.kakeiboMonths={};
+  sv('lastSyncAt',null);ss();csm();switchTab(ct);alert('ローカルデータを削除しました。\n再度ログインするとサーバーから復元できます。');
+}
 </script>
 </body>
 </html>
