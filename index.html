@@ -52,6 +52,7 @@ textarea{resize:vertical}
 .techo-col-btns{display:flex;flex-direction:column;gap:1px;padding:2px}
 .techo-col-btn{width:22px;height:22px;font-size:14px;border-radius:4px;color:var(--text2);opacity:.4;display:flex;align-items:center;justify-content:center}
 .techo-col-btn:hover{opacity:1;background:var(--border)}
+.techo-month-header{position:sticky;top:88px;z-index:10;background:var(--accent);color:#fff;padding:8px 12px;font-size:14px;font-weight:700;letter-spacing:.5px}
 .kakeibo-summary{display:flex;gap:8px;padding:12px;flex-wrap:wrap}
 .kakeibo-stat{flex:1;min-width:80px;padding:10px;background:var(--bg);border-radius:var(--radius);text-align:center}
 .kakeibo-stat-label{font-size:11px;color:var(--text2);margin-bottom:4px}
@@ -98,8 +99,8 @@ textarea{resize:vertical}
 <button class="tab-btn" data-tab="kakeibo" onclick="switchTab('kakeibo')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>家計簿</button>
 </div>
 <div class="tab-content active" id="tab-techo">
-<div class="month-nav"><button class="month-nav-btn" onclick="techoMonth(-1)">◀</button><span class="month-nav-label" id="techo-month-label"></span><button class="month-nav-btn" onclick="techoMonth(1)">▶</button></div>
-<div class="techo-toolbar"><button class="btn btn-primary btn-sm" onclick="openShiftInsert()">シフト挿入</button><button class="btn btn-outline btn-sm" onclick="techoAddCol()">＋列</button><button class="btn btn-outline btn-sm" id="techo-rmcol" style="display:none" onclick="techoRmCol()">−列</button></div>
+<div class="month-nav"><button class="month-nav-btn" onclick="techoYear(-1)">◀</button><span class="month-nav-label" id="techo-year-label"></span><button class="month-nav-btn" onclick="techoYear(1)">▶</button></div>
+<div class="techo-toolbar"><button class="btn btn-primary btn-sm" onclick="openShiftInsert()">シフト挿入</button><button class="btn btn-outline btn-sm" onclick="techoAddCol()">＋列</button><button class="btn btn-outline btn-sm" id="techo-rmcol" style="display:none" onclick="techoRmCol()">−列</button><button class="btn btn-outline btn-sm" onclick="techoScrollToday()">📍今日</button></div>
 <div id="techo-body"></div>
 </div>
 <div class="tab-content" id="tab-memo">
@@ -110,6 +111,7 @@ textarea{resize:vertical}
 <div class="tab-content" id="tab-kakeibo">
 <div class="month-nav"><button class="month-nav-btn" onclick="kNav(-1)">◀</button><span class="month-nav-label" id="k-label"></span><button class="month-nav-btn" onclick="kNav(1)">▶</button></div>
 <div style="padding:8px 12px;display:flex;gap:4px;justify-content:center"><button class="btn btn-outline btn-sm" id="km-m" onclick="kMode('month')" style="font-weight:700">月単位</button><button class="btn btn-outline btn-sm" id="km-y" onclick="kMode('year')">年単位</button><button class="btn btn-primary btn-sm" onclick="mTpl()">📝テンプレ</button></div>
+<div style="padding:8px 12px;display:flex;gap:4px;align-items:center"><input type="number" id="kq-amount" class="text-input" placeholder="金額" inputmode="numeric" style="flex:1"><input type="text" id="kq-memo" class="text-input" placeholder="メモ(任意)" style="flex:1"><button class="btn btn-danger btn-sm" onclick="kQuickExpense()" style="white-space:nowrap">支出追加</button></div>
 <div id="k-mv" style="display:flex;flex-direction:column;flex:1"><div class="kakeibo-summary" id="k-sum"></div><div class="kakeibo-section"><div class="kakeibo-section-title">収入<span class="kakeibo-section-total" id="k-it">¥0</span></div><textarea class="text-area" id="k-i" placeholder="半角数字で金額、全角でコメント&#10;例: 250000 給与" oninput="kCalc()"></textarea></div><div class="kakeibo-section" style="flex:1;display:flex;flex-direction:column"><div class="kakeibo-section-title">支出<span class="kakeibo-section-total" id="k-et">¥0</span></div><textarea class="text-area" id="k-e" placeholder="半角数字で金額、全角でコメント&#10;例: 80000 家賃" oninput="kCalc()" style="flex:1;min-height:200px"></textarea></div></div>
 <div id="k-yv" style="display:none;padding:8px 12px"></div>
 </div>
@@ -155,25 +157,32 @@ function cfYes(){document.getElementById('cf').classList.remove('open');if(cfCb)
 function cfNo(){document.getElementById('cf').classList.remove('open');cfCb=null}
 
 // === TECHO ===
-let tYM=cym();
-function techoMonth(n){tYM=am(tYM,n);rT()}
+let tY=cn().getFullYear();
+function techoYear(n){tY+=n;rT()}
+function techoScrollToday(){const el=document.querySelector('.techo-date.today');if(el)el.closest('.techo-day').scrollIntoView({block:'center',behavior:'smooth'})}
 async function rT(){
-  const[y,m]=tYM.split('-').map(Number);await lh(y);
-  document.getElementById('techo-month-label').textContent=`${y}年${m}月`;
+  await lh(tY);
+  document.getElementById('techo-year-label').textContent=`${tY}年`;
   const cols=S.techoColumns;document.getElementById('techo-rmcol').style.display=cols>1?'':'none';
-  const days=dim(tYM),td=ts();let h='';
-  for(let d=1;d<=days;d++){
-    const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dw=dow(y,m,d),it=ds===td,hl=ih(ds);
-    let dc='techo-date';if(it)dc+=' today';else if(hl)dc+=' holiday';else if(dw===0)dc+=' sunday';else if(dw===6)dc+=' saturday';
-    let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};
-    while(dy.entries.length<cols)dy.entries.push({uuid:uid(),main:'',col:dy.entries.length});
-    h+=`<div class="techo-day"><div class="${dc}"><span class="techo-date-num">${d}</span><span class="techo-date-day">${DW[dw]}</span></div><div class="techo-entries">`;
-    for(let c=0;c<dy.entries.length;c++){const e=dy.entries[c];h+=`<div class="techo-entry" data-date="${ds}" data-col="${c}" data-uuid="${e.uuid}"><input class="techo-main" value="${ea(e.main)}" placeholder="..." oninput="tSv(this,'main')"></div>`}
-    h+=`</div><div class="techo-col-btns"><button class="techo-col-btn" onclick="tAdd('${ds}')">＋</button>${dy.entries.length>cols?`<button class="techo-col-btn" onclick="tRm('${ds}')">−</button>`:''}</div></div>`;
+  const td=ts();let h='';
+  for(let m=1;m<=12;m++){
+    const ym=`${tY}-${String(m).padStart(2,'0')}`;
+    const days=dim(ym);
+    h+=`<div class="techo-month-header" id="month-${m}">${m}月</div>`;
+    for(let d=1;d<=days;d++){
+      const ds=`${tY}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dw=dow(tY,m,d),it=ds===td,hl=ih(ds);
+      let dc='techo-date';if(it)dc+=' today';else if(hl)dc+=' holiday';else if(dw===0)dc+=' sunday';else if(dw===6)dc+=' saturday';
+      let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};
+      while(dy.entries.length<cols)dy.entries.push({uuid:uid(),main:'',col:dy.entries.length});
+      h+=`<div class="techo-day"><div class="${dc}"><span class="techo-date-num">${d}</span><span class="techo-date-day">${DW[dw]}</span></div><div class="techo-entries">`;
+      for(let c=0;c<dy.entries.length;c++){const e=dy.entries[c];h+=`<div class="techo-entry" data-date="${ds}" data-col="${c}" data-uuid="${e.uuid}"><input class="techo-main" value="${ea(e.main)}" placeholder="..." oninput="tSv(this,'main')"></div>`}
+      h+=`</div><div class="techo-col-btns"><button class="techo-col-btn" onclick="tAdd('${ds}')">＋</button>${dy.entries.length>cols?`<button class="techo-col-btn" onclick="tRm('${ds}')">−</button>`:''}</div></div>`;
+    }
   }
   document.getElementById('techo-body').innerHTML=h;
-  if(tYM===cym()){const el=document.querySelector('.techo-date.today');if(el)el.closest('.techo-day').scrollIntoView({block:'center',behavior:'smooth'})}
+  // 今年なら今日にスクロール
+  if(tY===cn().getFullYear()){setTimeout(()=>techoScrollToday(),100)}
 }
 function tSv(el,f){const en=el.closest('.techo-entry'),ds=en.dataset.date,col=+en.dataset.col,eu=en.dataset.uuid;let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};while(dy.entries.length<=col)dy.entries.push({uuid:uid(),main:'',col:dy.entries.length});dy.entries[col][f]=el.value;dy.entries[col].uuid=eu;S.techoDays[ds]=dy;ss(['techoDays'])}
 function techoAddCol(){S.techoColumns++;ss(['techoColumns']);rT()}
@@ -212,9 +221,11 @@ function kMode(m){kMd=m;sv('lastKakeiboMode',kMd);document.getElementById('km-m'
 function rK(){const[y,m]=kYM.split('-').map(Number);document.getElementById('k-label').textContent=kMd==='month'?`${y}年${m}月`:`${y}年`;if(kMd==='month')rKM();else rKY()}
 function rKM(){let d=S.kakeiboMonths[kYM];if(!d){d={uuid:uid(),yearMonth:kYM,income:'',expense:''};S.kakeiboMonths[kYM]=d;sv('kakeiboMonths',S.kakeiboMonths)}document.getElementById('k-i').value=d.income;document.getElementById('k-e').value=d.expense;kCalc()}
 let _kCalcTimer=null;
-function kCalc(){const it=document.getElementById('k-i').value,et=document.getElementById('k-e').value,inc=ck(it),exp=ck(et),bal=inc-exp;document.getElementById('k-it').textContent=`¥${inc.toLocaleString()}`;document.getElementById('k-et').textContent=`¥${exp.toLocaleString()}`;document.getElementById('k-sum').innerHTML=`<div class="kakeibo-stat"><div class="kakeibo-stat-label">収入</div><div class="kakeibo-stat-value positive">¥${inc.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">支出</div><div class="kakeibo-stat-value negative">¥${exp.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">収支</div><div class="kakeibo-stat-value ${bal>=0?'positive':'negative'}">¥${bal.toLocaleString()}</div></div>`;if(!S.kakeiboMonths[kYM])S.kakeiboMonths[kYM]={uuid:uid(),yearMonth:kYM,income:'',expense:''};S.kakeiboMonths[kYM].income=it;S.kakeiboMonths[kYM].expense=et;sv('kakeiboMonths',S.kakeiboMonths);if(_kCalcTimer)clearTimeout(_kCalcTimer);_kCalcTimer=setTimeout(()=>ss(['kakeiboMonths']),1000)}
+function kPrevBal(ym,depth){if(!depth)depth=0;if(depth>120)return 0;const prev=am(ym,-1);const d=S.kakeiboMonths[prev];if(!d)return 0;return ck(d.income)-ck(d.expense)+kPrevBal(prev,depth+1)}
+function kCalc(){const it=document.getElementById('k-i').value,et=document.getElementById('k-e').value,inc=ck(it),exp=ck(et),carry=kPrevBal(kYM),totalInc=inc+(carry>0?carry:0),totalExp=exp+(carry<0?Math.abs(carry):0),bal=totalInc-totalExp;document.getElementById('k-it').textContent=`¥${inc.toLocaleString()}`;document.getElementById('k-et').textContent=`¥${exp.toLocaleString()}`;let sumH='';if(carry!==0){sumH+=`<div class="kakeibo-stat"><div class="kakeibo-stat-label">繰越</div><div class="kakeibo-stat-value ${carry>=0?'positive':'negative'}">¥${carry.toLocaleString()}</div></div>`}sumH+=`<div class="kakeibo-stat"><div class="kakeibo-stat-label">収入</div><div class="kakeibo-stat-value positive">¥${inc.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">支出</div><div class="kakeibo-stat-value negative">¥${exp.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">残高</div><div class="kakeibo-stat-value ${bal>=0?'positive':'negative'}">¥${bal.toLocaleString()}</div></div>`;document.getElementById('k-sum').innerHTML=sumH;if(!S.kakeiboMonths[kYM])S.kakeiboMonths[kYM]={uuid:uid(),yearMonth:kYM,income:'',expense:''};S.kakeiboMonths[kYM].income=it;S.kakeiboMonths[kYM].expense=et;sv('kakeiboMonths',S.kakeiboMonths);if(_kCalcTimer)clearTimeout(_kCalcTimer);_kCalcTimer=setTimeout(()=>ss(['kakeiboMonths']),1000)}
 function ck(t){let s=0;for(const l of t.split('\n')){const tr=l.trim();if(!tr)continue;let n='';for(const c of tr){const cd=c.charCodeAt(0);if(cd>=48&&cd<=57)n+=c;else if(c==='-'&&n==='')n+=c;else if(cd>127)break;else if(c===' '&&n==='')continue;else break}if(n&&n!=='-'){const v=parseInt(n);if(!isNaN(v))s+=v}}return s}
-function rKY(){const yr=+kYM.split('-')[0];let h='<table class="year-table"><tr><th>月</th><th>収入</th><th>支出</th><th>収支</th></tr>',ti=0,te=0;for(let m=1;m<=12;m++){const ym=`${yr}-${String(m).padStart(2,'0')}`,d=S.kakeiboMonths[ym],inc=d?ck(d.income):0,exp=d?ck(d.expense):0,bal=inc-exp;ti+=inc;te+=exp;h+=`<tr><td>${m}月</td><td>¥${inc.toLocaleString()}</td><td>¥${exp.toLocaleString()}</td><td style="color:${bal>=0?'var(--success)':'var(--danger)'}">${bal>=0?'+':''}¥${bal.toLocaleString()}</td></tr>`}const tb=ti-te;h+=`<tr class="total-row"><td>合計</td><td>¥${ti.toLocaleString()}</td><td>¥${te.toLocaleString()}</td><td style="color:${tb>=0?'var(--success)':'var(--danger)'}">${tb>=0?'+':''}¥${tb.toLocaleString()}</td></tr></table>`;document.getElementById('k-yv').innerHTML=h}
+function kQuickExpense(){const amtEl=document.getElementById('kq-amount'),memoEl=document.getElementById('kq-memo'),amt=amtEl.value.trim();if(!amt||isNaN(+amt)||+amt===0)return;let line=amt;const memo=memoEl.value.trim();if(memo)line+=' '+memo;if(kMd!=='month')kMode('month');if(!S.kakeiboMonths[kYM])S.kakeiboMonths[kYM]={uuid:uid(),yearMonth:kYM,income:'',expense:''};const d=S.kakeiboMonths[kYM];const cur=d.expense||'';d.expense=cur?(cur.endsWith('\n')?cur:cur+'\n')+line:line;S.kakeiboMonths[kYM]=d;sv('kakeiboMonths',S.kakeiboMonths);document.getElementById('k-e').value=d.expense;kCalc();amtEl.value='';memoEl.value='';amtEl.focus()}
+function rKY(){const yr=+kYM.split('-')[0];const janYM=`${yr}-01`;const yearCarry=kPrevBal(janYM);let h='<table class="year-table"><tr><th>月</th><th>繰越</th><th>収入</th><th>支出</th><th>残高</th></tr>';let carry=yearCarry,ti=0,te=0;for(let m=1;m<=12;m++){const ym=`${yr}-${String(m).padStart(2,'0')}`,d=S.kakeiboMonths[ym],inc=d?ck(d.income):0,exp=d?ck(d.expense):0,bal=carry+inc-exp;ti+=inc;te+=exp;h+=`<tr><td>${m}月</td><td style="color:${carry>=0?'var(--success)':'var(--danger)'}">¥${carry.toLocaleString()}</td><td>¥${inc.toLocaleString()}</td><td>¥${exp.toLocaleString()}</td><td style="color:${bal>=0?'var(--success)':'var(--danger)'}">${bal>=0?'+':''}¥${bal.toLocaleString()}</td></tr>`;carry=bal}const tb=carry;h+=`<tr class="total-row"><td>合計</td><td></td><td>¥${ti.toLocaleString()}</td><td>¥${te.toLocaleString()}</td><td style="color:${tb>=0?'var(--success)':'var(--danger)'}">${tb>=0?'+':''}¥${tb.toLocaleString()}</td></tr></table>`;document.getElementById('k-yv').innerHTML=h}
 
 // === MENU ===
 async function xExport(){closeMenu();const z=new JSZip();z.file('monogusa_data.json',JSON.stringify({version:'1.0.0',exportedAt:new Date().toISOString(),techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,settings:S.settings},null,2));const b=await z.generateAsync({type:'blob'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`monogusa_${ts()}.zip`;a.click();URL.revokeObjectURL(a.href)}
@@ -346,7 +357,7 @@ function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 function ea(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
 apTh();window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(S.settings.theme==='system')apTh()});
-tYM=cym();rT();
+rT();
 // 家計簿モード復元
 if(kMd!=='month'){document.getElementById('km-m').style.fontWeight='400';document.getElementById('km-y').style.fontWeight='700';document.getElementById('k-mv').style.display='none';document.getElementById('k-yv').style.display=''}
 document.getElementById('menu-modal').addEventListener('click',e=>{if(e.target.id==='menu-modal')closeMenu()});
