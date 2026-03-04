@@ -53,16 +53,16 @@ textarea{resize:vertical}
 .techo-col-btn{width:22px;height:22px;font-size:14px;border-radius:4px;color:var(--text2);opacity:.4;display:flex;align-items:center;justify-content:center}
 .techo-col-btn:hover{opacity:1;background:var(--border)}
 .techo-month-header{position:sticky;top:88px;z-index:10;background:var(--accent);color:#fff;padding:8px 12px;font-size:14px;font-weight:700;letter-spacing:.5px}
-.kakeibo-summary{display:flex;gap:8px;padding:12px;flex-wrap:wrap}
-.kakeibo-stat{flex:1;min-width:80px;padding:10px;background:var(--bg);border-radius:var(--radius);text-align:center}
+.kakeibo-summary{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 12px}
+.kakeibo-stat{padding:8px;background:var(--bg);border-radius:var(--radius);text-align:center}
 .kakeibo-stat-label{font-size:11px;color:var(--text2);margin-bottom:4px}
 .kakeibo-stat-value{font-size:18px;font-weight:700}
 .kakeibo-stat-value.positive{color:var(--success)}.kakeibo-stat-value.negative{color:var(--danger)}
 .kakeibo-section{padding:8px 12px}
 .kakeibo-section-title{font-size:13px;font-weight:700;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:6px}
 .kakeibo-section-total{font-size:12px;font-weight:600;margin-left:auto}
-.year-table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
-.year-table th,.year-table td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--border)}
+.year-table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0;table-layout:fixed}
+.year-table th,.year-table td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis}
 .year-table th{text-align:left;font-weight:600;color:var(--text2);font-size:12px}
 .year-table td:first-child{text-align:left;font-weight:600}
 .year-table .total-row{font-weight:700;border-top:2px solid var(--text)}
