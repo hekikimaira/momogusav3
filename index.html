@@ -49,6 +49,7 @@ textarea{resize:vertical}
 .techo-entry{display:flex;align-items:center;gap:4px;min-height:28px}
 .techo-main{flex:1;padding:3px 6px;border:none;background:transparent;font-size:13px;border-bottom:1px solid transparent;outline:none;min-width:0}
 .techo-main:focus{border-bottom-color:var(--accent)}
+.techo-main.commented{color:var(--text2);opacity:.5;font-style:italic;text-decoration:line-through}
 .techo-col-btns{display:flex;flex-direction:column;gap:1px;padding:2px}
 .techo-col-btn{width:22px;height:22px;font-size:14px;border-radius:4px;color:var(--text2);opacity:.4;display:flex;align-items:center;justify-content:center}
 .techo-col-btn:hover{opacity:1;background:var(--border)}
@@ -133,9 +134,9 @@ textarea{resize:vertical}
 const DB='monogusa_',sv=(k,v)=>{try{localStorage.setItem(DB+k,JSON.stringify(v))}catch(e){}},ld=(k,d)=>{try{const v=localStorage.getItem(DB+k);return v?JSON.parse(v):d}catch(e){return d}},uid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)});
 let S={techoDays:ld('techoDays',{}),shiftPatterns:ld('shiftPatterns',[{uuid:uid(),name:'A',items:[]},{uuid:uid(),name:'B',items:[]},{uuid:uid(),name:'C',items:[]},{uuid:uid(),name:'D',items:[]}]),techoColumns:ld('techoColumns',1),memoCategories:ld('memoCategories',[]),memoTemplates:ld('memoTemplates',[]),kakeiboMonths:ld('kakeiboMonths',{}),settings:ld('settings',{dateCorrection:0,theme:'system',importMode:'overwrite'})};
 function ss(keys){if(!keys)keys=Object.keys(S);for(const k of keys)sv(k,S[k]);fbAutoSync();}
-let _fbSyncTimer=null;
+let _fbSyncTimer=null,_fbPushing=false;
 function fbAutoSync(){if(_fbSyncTimer)clearTimeout(_fbSyncTimer);_fbSyncTimer=setTimeout(()=>{if(window._fbDb&&window._fbUser)fbPushSilent().catch(()=>{})},2000);}
-async function fbPushSilent(){if(!window._fbDb||!window._fbUser)return;try{await window._fbDb.collection('users').doc(window._fbUser.uid).set({techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,updatedAt:new Date().toISOString()});sv('lastSyncAt',new Date().toISOString())}catch(e){console.error('auto sync error',e)}}
+async function fbPushSilent(){if(!window._fbDb||!window._fbUser)return;try{_fbPushing=true;await window._fbDb.collection('users').doc(window._fbUser.uid).set({techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,updatedAt:new Date().toISOString()});sv('lastSyncAt',new Date().toISOString());setTimeout(()=>{_fbPushing=false},500)}catch(e){_fbPushing=false;console.error('auto sync error',e)}}
 function cn(){return new Date(Date.now()+(S.settings.dateCorrection||0))}
 function ts(){const d=cn();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function cym(){const d=cn();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
@@ -176,7 +177,7 @@ async function rT(){
       let dy=S.techoDays[ds];if(!dy)dy={uuid:uid(),date:ds,entries:[]};
       while(dy.entries.length<cols)dy.entries.push({uuid:uid(),main:'',col:dy.entries.length});
       h+=`<div class="techo-day"><div class="${dc}"><span class="techo-date-num">${d}</span><span class="techo-date-day">${DW[dw]}</span></div><div class="techo-entries">`;
-      for(let c=0;c<dy.entries.length;c++){const e=dy.entries[c];h+=`<div class="techo-entry" data-date="${ds}" data-col="${c}" data-uuid="${e.uuid}"><input class="techo-main" value="${ea(e.main)}" placeholder="..." oninput="tSv(this,'main')"></div>`}
+      for(let c=0;c<dy.entries.length;c++){const e=dy.entries[c];const cmt=e.main&&e.main.startsWith('@@')?' commented':'';h+=`<div class="techo-entry" data-date="${ds}" data-col="${c}" data-uuid="${e.uuid}"><input class="techo-main${cmt}" value="${ea(e.main)}" placeholder="..." oninput="tSv(this,'main')"></div>`}
       h+=`</div><div class="techo-col-btns"><button class="techo-col-btn" onclick="tAdd('${ds}')">＋</button>${dy.entries.length>cols?`<button class="techo-col-btn" onclick="tRm('${ds}')">−</button>`:''}</div></div>`;
     }
   }
@@ -223,7 +224,7 @@ function rKM(){let d=S.kakeiboMonths[kYM];if(!d){d={uuid:uid(),yearMonth:kYM,inc
 let _kCalcTimer=null;
 function kPrevBal(ym,depth){if(!depth)depth=0;if(depth>120)return 0;const prev=am(ym,-1);const d=S.kakeiboMonths[prev];if(!d)return 0;return ck(d.income)-ck(d.expense)+kPrevBal(prev,depth+1)}
 function kCalc(){const it=document.getElementById('k-i').value,et=document.getElementById('k-e').value,inc=ck(it),exp=ck(et),carry=kPrevBal(kYM),totalInc=inc+(carry>0?carry:0),totalExp=exp+(carry<0?Math.abs(carry):0),bal=totalInc-totalExp;document.getElementById('k-it').textContent=`¥${inc.toLocaleString()}`;document.getElementById('k-et').textContent=`¥${exp.toLocaleString()}`;let sumH='';if(carry!==0){sumH+=`<div class="kakeibo-stat"><div class="kakeibo-stat-label">繰越</div><div class="kakeibo-stat-value ${carry>=0?'positive':'negative'}">¥${carry.toLocaleString()}</div></div>`}sumH+=`<div class="kakeibo-stat"><div class="kakeibo-stat-label">収入</div><div class="kakeibo-stat-value positive">¥${inc.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">支出</div><div class="kakeibo-stat-value negative">¥${exp.toLocaleString()}</div></div><div class="kakeibo-stat"><div class="kakeibo-stat-label">残高</div><div class="kakeibo-stat-value ${bal>=0?'positive':'negative'}">¥${bal.toLocaleString()}</div></div>`;document.getElementById('k-sum').innerHTML=sumH;if(!S.kakeiboMonths[kYM])S.kakeiboMonths[kYM]={uuid:uid(),yearMonth:kYM,income:'',expense:''};S.kakeiboMonths[kYM].income=it;S.kakeiboMonths[kYM].expense=et;sv('kakeiboMonths',S.kakeiboMonths);if(_kCalcTimer)clearTimeout(_kCalcTimer);_kCalcTimer=setTimeout(()=>ss(['kakeiboMonths']),1000)}
-function ck(t){let s=0;for(const l of t.split('\n')){const tr=l.trim();if(!tr)continue;let n='';for(const c of tr){const cd=c.charCodeAt(0);if(cd>=48&&cd<=57)n+=c;else if(c==='-'&&n==='')n+=c;else if(cd>127)break;else if(c===' '&&n==='')continue;else break}if(n&&n!=='-'){const v=parseInt(n);if(!isNaN(v))s+=v}}return s}
+function ck(t){let s=0;for(const l of t.split('\n')){const tr=l.trim();if(!tr||tr.startsWith('@@'))continue;let n='';for(const c of tr){const cd=c.charCodeAt(0);if(cd>=48&&cd<=57)n+=c;else if(c==='-'&&n==='')n+=c;else if(cd>127)break;else if(c===' '&&n==='')continue;else break}if(n&&n!=='-'){const v=parseInt(n);if(!isNaN(v))s+=v}}return s}
 function kQuickExpense(){const amtEl=document.getElementById('kq-amount'),memoEl=document.getElementById('kq-memo'),amt=amtEl.value.trim();if(!amt||isNaN(+amt)||+amt===0)return;let line=amt;const memo=memoEl.value.trim();if(memo)line+=' '+memo;if(kMd!=='month')kMode('month');if(!S.kakeiboMonths[kYM])S.kakeiboMonths[kYM]={uuid:uid(),yearMonth:kYM,income:'',expense:''};const d=S.kakeiboMonths[kYM];const cur=d.expense||'';d.expense=cur?(cur.endsWith('\n')?cur:cur+'\n')+line:line;S.kakeiboMonths[kYM]=d;sv('kakeiboMonths',S.kakeiboMonths);document.getElementById('k-e').value=d.expense;kCalc();amtEl.value='';memoEl.value='';amtEl.focus()}
 function rKY(){const yr=+kYM.split('-')[0];const janYM=`${yr}-01`;const yearCarry=kPrevBal(janYM);let h='<table class="year-table"><tr><th>月</th><th>繰越</th><th>収入</th><th>支出</th><th>残高</th></tr>';let carry=yearCarry,ti=0,te=0;for(let m=1;m<=12;m++){const ym=`${yr}-${String(m).padStart(2,'0')}`,d=S.kakeiboMonths[ym],inc=d?ck(d.income):0,exp=d?ck(d.expense):0,bal=carry+inc-exp;ti+=inc;te+=exp;h+=`<tr><td>${m}月</td><td style="color:${carry>=0?'var(--success)':'var(--danger)'}">¥${carry.toLocaleString()}</td><td>¥${inc.toLocaleString()}</td><td>¥${exp.toLocaleString()}</td><td style="color:${bal>=0?'var(--success)':'var(--danger)'}">${bal>=0?'+':''}¥${bal.toLocaleString()}</td></tr>`;carry=bal}const tb=carry;h+=`<tr class="total-row"><td>合計</td><td></td><td>¥${ti.toLocaleString()}</td><td>¥${te.toLocaleString()}</td><td style="color:${tb>=0?'var(--success)':'var(--danger)'}">${tb>=0?'+':''}¥${tb.toLocaleString()}</td></tr></table>`;document.getElementById('k-yv').innerHTML=h}
 
@@ -247,7 +248,31 @@ async function fbInit(){
   if(window._fbApp)return;
   if(!window.firebase){await lsc('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');await lsc('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js');await lsc('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js')}
   window._fbApp=firebase.initializeApp(FB_CONFIG);window._fbAuth=firebase.auth();window._fbDb=firebase.firestore();
-  window._fbAuth.onAuthStateChanged(async u=>{window._fbUser=u||null;if(u)await fbMerge()});
+  let _fbUnsub=null;
+  window._fbAuth.onAuthStateChanged(async u=>{
+    window._fbUser=u||null;
+    if(_fbUnsub){_fbUnsub();_fbUnsub=null}
+    if(u){
+      await fbMerge();
+      // リアルタイムリスナー開始
+      _fbUnsub=window._fbDb.collection('users').doc(u.uid).onSnapshot(snap=>{
+        if(!snap.exists||_fbPushing)return;
+        const d=snap.data();let changed=false;
+        // 手帳
+        if(d.techoDays){for(const[k,v]of Object.entries(d.techoDays)){if(!sameContent(S.techoDays[k],v)){S.techoDays[k]=v;changed=true}}}
+        // 家計簿
+        if(d.kakeiboMonths){for(const[k,v]of Object.entries(d.kakeiboMonths)){if(!sameContent(S.kakeiboMonths[k],v)){S.kakeiboMonths[k]=v;changed=true}}}
+        // メモ
+        if(d.memoCategories){for(const sc of d.memoCategories){const li=S.memoCategories.findIndex(c=>c.uuid===sc.uuid);if(li<0){S.memoCategories.push(sc);changed=true}else if(!sameContent(S.memoCategories[li],sc)){S.memoCategories[li]=sc;changed=true}}}
+        // テンプレ
+        if(d.memoTemplates){for(const st of d.memoTemplates){const li=S.memoTemplates.findIndex(t=>t.uuid===st.uuid);if(li<0){S.memoTemplates.push(st);changed=true}else if(!sameContent(S.memoTemplates[li],st)){S.memoTemplates[li]=st;changed=true}}}
+        // シフト・列数
+        if(d.shiftPatterns&&!sameContent(S.shiftPatterns,d.shiftPatterns)){S.shiftPatterns=d.shiftPatterns;changed=true}
+        if(d.techoColumns&&d.techoColumns!==S.techoColumns){S.techoColumns=d.techoColumns;changed=true}
+        if(changed){for(const k of Object.keys(S))sv(k,S[k]);switchTab(ct)}
+      });
+    }
+  });
 }
 function lsc(src){return new Promise((ok,ng)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ng;document.head.appendChild(s)})}
 async function fbLogin(){try{await fbInit();await window._fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());csm()}catch(e){alert('ログインエラー: '+e.message)}}
@@ -262,29 +287,84 @@ function stripMeta(obj){
 }
 function sameContent(a,b){return JSON.stringify(stripMeta(a))===JSON.stringify(stripMeta(b))}
 
-// 自動マージ（起動時・ログイン時）
+// @@コメント付きマージヘルパー
+function commentOut(old,label){
+  if(!old||typeof old!=='object')return '';
+  return `@@[旧${label}] `;
+}
+// 手帳エントリを@@付きで併記
+function mergeTechoDay(local,server){
+  const merged=JSON.parse(JSON.stringify(server));
+  const localEntries=local.entries||[];
+  const serverEntries=server.entries||[];
+  for(let i=0;i<localEntries.length;i++){
+    const le=localEntries[i],se=serverEntries[i];
+    if(le.main&&(!se||le.main!==se.main)){
+      merged.entries.push({uuid:uid(),main:'@@旧: '+le.main,col:merged.entries.length});
+    }
+  }
+  return merged;
+}
+// 家計簿テキストを@@付きで併記
+function mergeKakeiboText(localText,serverText){
+  if(!localText)return serverText||'';
+  if(!serverText)return localText;
+  if(localText===serverText)return serverText;
+  // ローカルの行のうちサーバーにない行を@@で追加
+  const sLines=new Set(serverText.split('\n').map(l=>l.trim()).filter(l=>l));
+  const lLines=localText.split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('@@'));
+  const commented=lLines.filter(l=>!sLines.has(l)).map(l=>'@@旧: '+l);
+  if(!commented.length)return serverText;
+  return serverText+(serverText.endsWith('\n')?'':'\n')+commented.join('\n');
+}
+// メモのcontentを@@付きで併記
+function mergeMemoContent(localSub,serverSub){
+  const merged=JSON.parse(JSON.stringify(serverSub));
+  if(localSub.content&&localSub.content!==serverSub.content){
+    const oldLines=localSub.content.split('\n').filter(l=>l.trim()&&!l.trim().startsWith('@@'));
+    const newLines=new Set(serverSub.content.split('\n').map(l=>l.trim()));
+    const commented=oldLines.filter(l=>!newLines.has(l.trim())).map(l=>'@@旧: '+l);
+    if(commented.length)merged.content=(merged.content||'')+(merged.content.endsWith('\n')?'':'\n')+commented.join('\n');
+  }
+  return merged;
+}
+
+// 自動マージ（起動時・ログイン時）— 新しい方で上書き、古い差分は@@で併記
 async function fbMerge(){
   if(!window._fbDb||!window._fbUser)return;
   try{
     const doc=await window._fbDb.collection('users').doc(window._fbUser.uid).get();
     if(!doc.exists){await fbPushSilent();return}
-    const sv2=doc.data();let conflicts=[];
+    const sv2=doc.data();
     // 手帳マージ
     if(sv2.techoDays){for(const[k,v]of Object.entries(sv2.techoDays)){
       if(!S.techoDays[k])S.techoDays[k]=v;
-      else if(!sameContent(S.techoDays[k],v))conflicts.push({type:'手帳',key:k,local:S.techoDays[k],server:v,apply:sv3=>{S.techoDays[k]=sv3}});
+      else if(!sameContent(S.techoDays[k],v))S.techoDays[k]=mergeTechoDay(S.techoDays[k],v);
     }}
     // 家計簿マージ
     if(sv2.kakeiboMonths){for(const[k,v]of Object.entries(sv2.kakeiboMonths)){
       if(!S.kakeiboMonths[k])S.kakeiboMonths[k]=v;
-      else if(!sameContent(S.kakeiboMonths[k],v))conflicts.push({type:'家計簿',key:k,local:S.kakeiboMonths[k],server:v,apply:sv3=>{S.kakeiboMonths[k]=sv3}});
+      else if(!sameContent(S.kakeiboMonths[k],v)){
+        const local=S.kakeiboMonths[k];
+        S.kakeiboMonths[k]={uuid:v.uuid||local.uuid,yearMonth:k,
+          income:mergeKakeiboText(local.income,v.income),
+          expense:mergeKakeiboText(local.expense,v.expense)};
+      }
     }}
     // メモマージ（UUID比較）
     if(sv2.memoCategories){for(const sc of sv2.memoCategories){
       const li=S.memoCategories.findIndex(c=>c.uuid===sc.uuid);
       if(li<0)S.memoCategories.push(sc);
       else if(!sameContent(S.memoCategories[li],sc)){
-        const idx=li;conflicts.push({type:'メモ',key:sc.name,local:S.memoCategories[idx],server:sc,apply:sv3=>{S.memoCategories[idx]=sv3}});
+        const local=S.memoCategories[li];
+        const merged=JSON.parse(JSON.stringify(sc));
+        // サブカテゴリ単位でマージ
+        for(const ls of (local.subs||[])){
+          const si=merged.subs.findIndex(s=>s.uuid===ls.uuid);
+          if(si<0)merged.subs.push({...ls,name:'@@旧:'+ls.name});
+          else if(!sameContent(ls,merged.subs[si]))merged.subs[si]=mergeMemoContent(ls,merged.subs[si]);
+        }
+        S.memoCategories[li]=merged;
       }
     }}
     // テンプレマージ
@@ -297,58 +377,11 @@ async function fbMerge(){
     if(sv2.shiftPatterns)S.shiftPatterns=sv2.shiftPatterns;
     if(sv2.techoColumns&&sv2.techoColumns>S.techoColumns)S.techoColumns=sv2.techoColumns;
 
-    if(conflicts.length>0){await resolveConflicts(conflicts)}
     // マージ結果をローカル保存＋即時サーバー反映
     for(const k of Object.keys(S))sv(k,S[k]);
     await fbPushSilent();
     switchTab(ct);
   }catch(e){console.error('merge error',e)}
-}
-
-// 競合解決UI
-let _conflicts=[],_cIdx=0;
-function resolveConflicts(list){
-  return new Promise(ok=>{_conflicts=list;_cIdx=0;window._conflictDone=ok;showConflict()});
-}
-function fmtConflict(type,data){
-  if(!data||typeof data!=='object')return '(空)';
-  if(type==='手帳'){
-    // data = {uuid, date, entries:[{main,col},...]}
-    const d=data.date||'';const ents=(data.entries||[]).map(e=>e.main||'(空)').filter(s=>s!=='(空)');
-    return d+(ents.length?' : '+ents.join(', '):'(空)');
-  }
-  if(type==='家計簿'){
-    const ym=data.yearMonth||'';
-    const inc=data.income?data.income.split('\n').slice(0,3).join(', '):'(なし)';
-    const exp=data.expense?data.expense.split('\n').slice(0,3).join(', '):'(なし)';
-    return `${ym}\n収入: ${inc}\n支出: ${exp}`;
-  }
-  if(type==='メモ'){
-    // data = {uuid, name, subs:[{name,content},...]}
-    const n=data.name||'';const subs=(data.subs||[]).map(s=>s.name+(s.content?`(${s.content.length}字)`:'')).slice(0,5);
-    return `${n}\n${subs.join(', ')}`;
-  }
-  return JSON.stringify(data).substring(0,100);
-}
-function showConflict(){
-  if(_cIdx>=_conflicts.length){window._conflictDone();return}
-  const c=_conflicts[_cIdx];
-  const lp=fmtConflict(c.type,c.local);
-  const sp=fmtConflict(c.type,c.server);
-  let h=`<div class="modal-header"><span class="modal-title">競合 (${_cIdx+1}/${_conflicts.length})</span></div><div style="padding:8px">`;
-  h+=`<p style="font-size:13px;font-weight:600;margin-bottom:8px">${es(c.type)}: ${es(c.key)}</p>`;
-  h+=`<div style="margin-bottom:8px;padding:8px;background:var(--bg);border-radius:var(--radius);font-size:12px;white-space:pre-wrap"><strong>📱 ローカル:</strong>\n${es(lp)}</div>`;
-  h+=`<div style="margin-bottom:12px;padding:8px;background:var(--bg);border-radius:var(--radius);font-size:12px;white-space:pre-wrap"><strong>☁️ サーバー:</strong>\n${es(sp)}</div>`;
-  h+=`<button class="btn btn-outline" style="width:100%;margin-bottom:4px" onclick="pickConflict('local')">📱 ローカルを使う</button>`;
-  h+=`<button class="btn btn-primary" style="width:100%" onclick="pickConflict('server')">☁️ サーバーを使う</button>`;
-  h+=`</div>`;osm(h);
-}
-function pickConflict(choice){
-  const c=_conflicts[_cIdx];
-  if(choice==='server')c.apply(c.server);
-  _cIdx++;
-  if(_cIdx>=_conflicts.length){csm();window._conflictDone()}
-  else showConflict();
 }
 function xImportMode(){closeMenu();let h=`<div class="modal-header"><span class="modal-title">インポートモード</span><button class="modal-close" onclick="csm()">×</button></div>`;[{id:'overwrite',n:'上書き',d:'UUID一致は上書き、同一はスキップ'},{id:'diff',n:'差分',d:'UUID一致かつ差異ありのみ更新'}].forEach(m=>{const s=S.settings.importMode===m.id?' style="font-weight:700;color:var(--accent)"':'';h+=`<button class="menu-item"${s} onclick="sIM('${m.id}')"><div><div>${m.n}</div><div style="font-size:11px;color:var(--text2)">${m.d}</div></div></button>`});osm(h)}
 function sIM(m){S.settings.importMode=m;ss(['settings']);csm()}
