@@ -125,6 +125,8 @@ textarea{resize:vertical}
 <button class="menu-item" onclick="xTplEdit()"><span class="menu-icon">📝</span>テンプレート編集</button>
 <button class="menu-item" onclick="xFirebase()"><span class="menu-icon">☁️</span>Firebase同期設定</button>
 <button class="menu-item" onclick="xImportMode()"><span class="menu-icon">⚙️</span>インポートモード</button>
+<button class="menu-item" onclick="xClearComments()"><span class="menu-icon">🧹</span>@@旧コメントを一括削除</button>
+<button class="menu-item" onclick="xSyncLog()"><span class="menu-icon">📊</span>同期ログ</button>
 </div></div>
 <div class="confirm-overlay" id="cf"><div class="confirm-box"><div class="confirm-msg" id="cf-msg"></div><div class="confirm-btns"><button class="btn btn-outline" onclick="cfNo()">キャンセル</button><button class="btn btn-danger" onclick="cfYes()">OK</button></div></div></div>
 <div class="modal-overlay" id="sub-modal"><div class="modal-sheet" id="smc"></div></div>
@@ -135,8 +137,18 @@ const DB='monogusa_',sv=(k,v)=>{try{localStorage.setItem(DB+k,JSON.stringify(v))
 let S={techoDays:ld('techoDays',{}),shiftPatterns:ld('shiftPatterns',[{uuid:uid(),name:'A',items:[]},{uuid:uid(),name:'B',items:[]},{uuid:uid(),name:'C',items:[]},{uuid:uid(),name:'D',items:[]}]),techoColumns:ld('techoColumns',1),memoCategories:ld('memoCategories',[]),memoTemplates:ld('memoTemplates',[]),kakeiboMonths:ld('kakeiboMonths',{}),settings:ld('settings',{dateCorrection:0,theme:'system',importMode:'overwrite'})};
 function ss(keys){if(!keys)keys=Object.keys(S);for(const k of keys)sv(k,S[k]);fbAutoSync();}
 let _fbSyncTimer=null,_fbPushing=false;
+// 同期ログ
+const SYNC_LOG_MAX=100;
+function syncLog(action,detail){
+  const logs=ld('syncLogs',[]);
+  const sizes={techo:JSON.stringify(S.techoDays).length,kakeibo:JSON.stringify(S.kakeiboMonths).length,memo:JSON.stringify(S.memoCategories).length,tpl:JSON.stringify(S.memoTemplates).length};
+  logs.unshift({time:new Date().toISOString(),action,detail,sizes});
+  if(logs.length>SYNC_LOG_MAX)logs.length=SYNC_LOG_MAX;
+  sv('syncLogs',logs);
+}
+function dataSize(){return JSON.stringify(S.techoDays).length+JSON.stringify(S.kakeiboMonths).length+JSON.stringify(S.memoCategories).length+JSON.stringify(S.memoTemplates).length}
 function fbAutoSync(){if(_fbSyncTimer)clearTimeout(_fbSyncTimer);_fbSyncTimer=setTimeout(()=>{if(window._fbDb&&window._fbUser)fbPushSilent().catch(()=>{})},2000);}
-async function fbPushSilent(){if(!window._fbDb||!window._fbUser)return;try{_fbPushing=true;await window._fbDb.collection('users').doc(window._fbUser.uid).set({techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,updatedAt:new Date().toISOString()});sv('lastSyncAt',new Date().toISOString());setTimeout(()=>{_fbPushing=false},500)}catch(e){_fbPushing=false;console.error('auto sync error',e)}}
+async function fbPushSilent(){if(!window._fbDb||!window._fbUser)return;try{_fbPushing=true;const before=dataSize();await window._fbDb.collection('users').doc(window._fbUser.uid).set({techoDays:S.techoDays,shiftPatterns:S.shiftPatterns,techoColumns:S.techoColumns,memoCategories:S.memoCategories,memoTemplates:S.memoTemplates,kakeiboMonths:S.kakeiboMonths,updatedAt:new Date().toISOString()});sv('lastSyncAt',new Date().toISOString());syncLog('PUSH',`${before}字→サーバーへ送信`);setTimeout(()=>{_fbPushing=false},500)}catch(e){_fbPushing=false;syncLog('PUSH_ERROR',e.message);console.error('auto sync error',e)}}
 function cn(){return new Date(Date.now()+(S.settings.dateCorrection||0))}
 function ts(){const d=cn();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function cym(){const d=cn();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
@@ -256,20 +268,21 @@ async function fbInit(){
       await fbMerge();
       // リアルタイムリスナー開始
       _fbUnsub=window._fbDb.collection('users').doc(u.uid).onSnapshot(snap=>{
-        if(!snap.exists||_fbPushing)return;
-        const d=snap.data();let changed=false;
+        if(!snap.exists){syncLog('RECV','スナップショット: ドキュメントなし');return}
+        if(_fbPushing){syncLog('RECV_SKIP','自己プッシュ由来→スキップ');return}
+        const d=snap.data();let changed=false;const before=dataSize();const details=[];
         // 手帳
-        if(d.techoDays){for(const[k,v]of Object.entries(d.techoDays)){if(!sameContent(S.techoDays[k],v)){S.techoDays[k]=v;changed=true}}}
+        if(d.techoDays){for(const[k,v]of Object.entries(d.techoDays)){if(!sameContent(S.techoDays[k],v)){const bLen=JSON.stringify(S.techoDays[k]||'').length;const aLen=JSON.stringify(v).length;details.push(`手帳[${k}] ${bLen}→${aLen}`);S.techoDays[k]=v;changed=true}}}
         // 家計簿
-        if(d.kakeiboMonths){for(const[k,v]of Object.entries(d.kakeiboMonths)){if(!sameContent(S.kakeiboMonths[k],v)){S.kakeiboMonths[k]=v;changed=true}}}
+        if(d.kakeiboMonths){for(const[k,v]of Object.entries(d.kakeiboMonths)){if(!sameContent(S.kakeiboMonths[k],v)){const bLen=JSON.stringify(S.kakeiboMonths[k]||'').length;const aLen=JSON.stringify(v).length;details.push(`家計簿[${k}] ${bLen}→${aLen}`);S.kakeiboMonths[k]=v;changed=true}}}
         // メモ
-        if(d.memoCategories){for(const sc of d.memoCategories){const li=S.memoCategories.findIndex(c=>c.uuid===sc.uuid);if(li<0){S.memoCategories.push(sc);changed=true}else if(!sameContent(S.memoCategories[li],sc)){S.memoCategories[li]=sc;changed=true}}}
+        if(d.memoCategories){for(const sc of d.memoCategories){const li=S.memoCategories.findIndex(c=>c.uuid===sc.uuid);if(li<0){details.push(`メモ[${sc.name}] 新規追加`);S.memoCategories.push(sc);changed=true}else if(!sameContent(S.memoCategories[li],sc)){const bLen=JSON.stringify(S.memoCategories[li]).length;const aLen=JSON.stringify(sc).length;details.push(`メモ[${sc.name}] ${bLen}→${aLen}`);S.memoCategories[li]=sc;changed=true}}}
         // テンプレ
         if(d.memoTemplates){for(const st of d.memoTemplates){const li=S.memoTemplates.findIndex(t=>t.uuid===st.uuid);if(li<0){S.memoTemplates.push(st);changed=true}else if(!sameContent(S.memoTemplates[li],st)){S.memoTemplates[li]=st;changed=true}}}
         // シフト・列数
         if(d.shiftPatterns&&!sameContent(S.shiftPatterns,d.shiftPatterns)){S.shiftPatterns=d.shiftPatterns;changed=true}
         if(d.techoColumns&&d.techoColumns!==S.techoColumns){S.techoColumns=d.techoColumns;changed=true}
-        if(changed){for(const k of Object.keys(S))sv(k,S[k]);switchTab(ct)}
+        if(changed){const after=dataSize();syncLog('RECV',`${before}→${after}字 (差${after-before}) ${details.join(', ')}`);for(const k of Object.keys(S))sv(k,S[k]);switchTab(ct)}else{syncLog('RECV_NOCHANGE','変更なし')}
       });
     }
   });
@@ -333,29 +346,36 @@ function mergeMemoContent(localSub,serverSub){
 async function fbMerge(){
   if(!window._fbDb||!window._fbUser)return;
   try{
+    const before=dataSize();
+    syncLog('MERGE_START',`開始 ローカル${before}字`);
     const doc=await window._fbDb.collection('users').doc(window._fbUser.uid).get();
-    if(!doc.exists){await fbPushSilent();return}
-    const sv2=doc.data();
+    if(!doc.exists){syncLog('MERGE','サーバーにデータなし→プッシュ');await fbPushSilent();return}
+    const sv2=doc.data();const serverSize=JSON.stringify(sv2).length;
+    syncLog('MERGE_FETCH',`サーバー取得 ${serverSize}字`);
+    const details=[];
     // 手帳マージ
     if(sv2.techoDays){for(const[k,v]of Object.entries(sv2.techoDays)){
-      if(!S.techoDays[k])S.techoDays[k]=v;
-      else if(!sameContent(S.techoDays[k],v))S.techoDays[k]=mergeTechoDay(S.techoDays[k],v);
+      if(!S.techoDays[k]){S.techoDays[k]=v;details.push(`手帳[${k}]新規`)}
+      else if(!sameContent(S.techoDays[k],v)){const bLen=JSON.stringify(S.techoDays[k]).length;S.techoDays[k]=mergeTechoDay(S.techoDays[k],v);details.push(`手帳[${k}]${bLen}→${JSON.stringify(S.techoDays[k]).length}`)}
     }}
     // 家計簿マージ
     if(sv2.kakeiboMonths){for(const[k,v]of Object.entries(sv2.kakeiboMonths)){
-      if(!S.kakeiboMonths[k])S.kakeiboMonths[k]=v;
+      if(!S.kakeiboMonths[k]){S.kakeiboMonths[k]=v;details.push(`家計簿[${k}]新規`)}
       else if(!sameContent(S.kakeiboMonths[k],v)){
+        const bLen=JSON.stringify(S.kakeiboMonths[k]).length;
         const local=S.kakeiboMonths[k];
         S.kakeiboMonths[k]={uuid:v.uuid||local.uuid,yearMonth:k,
           income:mergeKakeiboText(local.income,v.income),
           expense:mergeKakeiboText(local.expense,v.expense)};
+        details.push(`家計簿[${k}]${bLen}→${JSON.stringify(S.kakeiboMonths[k]).length}`);
       }
     }}
     // メモマージ（UUID比較）
     if(sv2.memoCategories){for(const sc of sv2.memoCategories){
       const li=S.memoCategories.findIndex(c=>c.uuid===sc.uuid);
-      if(li<0)S.memoCategories.push(sc);
+      if(li<0){S.memoCategories.push(sc);details.push(`メモ[${sc.name}]新規`)}
       else if(!sameContent(S.memoCategories[li],sc)){
+        const bLen=JSON.stringify(S.memoCategories[li]).length;
         const local=S.memoCategories[li];
         const merged=JSON.parse(JSON.stringify(sc));
         // サブカテゴリ単位でマージ
@@ -365,6 +385,7 @@ async function fbMerge(){
           else if(!sameContent(ls,merged.subs[si]))merged.subs[si]=mergeMemoContent(ls,merged.subs[si]);
         }
         S.memoCategories[li]=merged;
+        details.push(`メモ[${sc.name}]${bLen}→${JSON.stringify(merged).length}`);
       }
     }}
     // テンプレマージ
@@ -378,11 +399,33 @@ async function fbMerge(){
     if(sv2.techoColumns&&sv2.techoColumns>S.techoColumns)S.techoColumns=sv2.techoColumns;
 
     // マージ結果をローカル保存＋即時サーバー反映
+    const after=dataSize();
+    syncLog('MERGE_DONE',`完了 ${before}→${after}字 (差${after-before}) ${details.length?details.join(', '):'変更なし'}`);
     for(const k of Object.keys(S))sv(k,S[k]);
     await fbPushSilent();
     switchTab(ct);
-  }catch(e){console.error('merge error',e)}
+  }catch(e){syncLog('MERGE_ERROR',e.message);console.error('merge error',e)}
 }
+function xClearComments(){closeMenu();
+  let count=0;
+  // 手帳
+  for(const ds in S.techoDays){const dy=S.techoDays[ds];if(!dy.entries)continue;const before=dy.entries.length;dy.entries=dy.entries.filter(e=>!e.main||!e.main.startsWith('@@'));count+=before-dy.entries.length}
+  // 家計簿
+  for(const ym in S.kakeiboMonths){const d=S.kakeiboMonths[ym];if(d.income){const lines=d.income.split('\n');const filtered=lines.filter(l=>!l.trim().startsWith('@@'));count+=lines.length-filtered.length;d.income=filtered.join('\n')}if(d.expense){const lines=d.expense.split('\n');const filtered=lines.filter(l=>!l.trim().startsWith('@@'));count+=lines.length-filtered.length;d.expense=filtered.join('\n')}}
+  // メモ
+  for(const cat of S.memoCategories){for(const sub of (cat.subs||[])){if(sub.content){const lines=sub.content.split('\n');const filtered=lines.filter(l=>!l.trim().startsWith('@@'));count+=lines.length-filtered.length;sub.content=filtered.join('\n')}}}
+  ss();switchTab(ct);alert(`@@旧コメントを${count}件削除しました`);
+}
+function xSyncLog(){closeMenu();const logs=ld('syncLogs',[]);let h=`<div class="modal-header"><span class="modal-title">同期ログ (${logs.length}件)</span><button class="modal-close" onclick="csm()">×</button></div><div style="padding:8px;max-height:70vh;overflow-y:auto">`;
+  if(!logs.length)h+='<p style="font-size:13px;color:var(--text2)">ログなし</p>';
+  else for(const l of logs){
+    const t=new Date(l.time);const ts2=`${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+    const color=l.action.startsWith('PUSH')?'var(--accent)':l.action.startsWith('RECV')?'var(--success)':l.action.includes('ERROR')?'var(--danger)':'var(--text2)';
+    h+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><div style="display:flex;gap:6px;align-items:center"><span style="color:var(--text2)">${ts2}</span><span style="color:${color};font-weight:600">${es(l.action)}</span></div><div style="color:var(--text2);margin-top:2px;word-break:break-all">${es(l.detail)}</div>`;
+    if(l.sizes)h+=`<div style="color:var(--text2);margin-top:2px;font-size:11px">手帳:${l.sizes.techo} 家計簿:${l.sizes.kakeibo} メモ:${l.sizes.memo} テンプレ:${l.sizes.tpl}</div>`;
+    h+=`</div>`;
+  }
+  h+=`<button class="btn btn-outline btn-sm" style="margin-top:8px;width:100%" onclick="sv('syncLogs',[]);xSyncLog()">ログクリア</button></div>`;osm(h)}
 function xImportMode(){closeMenu();let h=`<div class="modal-header"><span class="modal-title">インポートモード</span><button class="modal-close" onclick="csm()">×</button></div>`;[{id:'overwrite',n:'上書き',d:'UUID一致は上書き、同一はスキップ'},{id:'diff',n:'差分',d:'UUID一致かつ差異ありのみ更新'}].forEach(m=>{const s=S.settings.importMode===m.id?' style="font-weight:700;color:var(--accent)"':'';h+=`<button class="menu-item"${s} onclick="sIM('${m.id}')"><div><div>${m.n}</div><div style="font-size:11px;color:var(--text2)">${m.d}</div></div></button>`});osm(h)}
 function sIM(m){S.settings.importMode=m;ss(['settings']);csm()}
 
